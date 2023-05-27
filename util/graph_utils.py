@@ -64,3 +64,13 @@ def visualise_graph(graph):
     plt.figure(figsize=(4, 3), dpi=200)
     nx.draw(nx_graph, pos=nx.kamada_kawai_layout(nx_graph), node_size=50, arrows=False)
     plt.show()
+
+
+def graphs_summary(graphs, graph_labels):
+    summary = pd.DataFrame(
+        [(g.number_of_nodes(), g.number_of_edges()) for g in graphs],
+        columns=["nodes", "edges"],
+    )
+
+    print(f"Summary:\n{summary.describe().round(1)}")
+    print(f"Graph labels:\n{graph_labels.value_counts().to_frame()}")
