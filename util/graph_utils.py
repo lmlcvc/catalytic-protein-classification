@@ -20,6 +20,8 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
+targets_dir = config['targets_dir']
+
 
 def get_distance_matrix(coords):
     diff_tensor = np.expand_dims(coords, axis=1) - np.expand_dims(coords, axis=0)
@@ -55,8 +57,13 @@ def generate_graph(source_directory, destination_directory, entry):
 
 
 def load_graph(source_directory, entry):
-    graph_list, label_dict = dgl.load_graphs(os.path.join(source_directory, f"{entry}.bin"))
+    graph_list, label_dict = dgl.load_graphs(os.path.join(source_directory, entry))
     return graph_list[0]
+
+
+def load_graph_labels(filename="targets.txt"):
+    with open(os.path.join(targets_dir, filename), "r") as f:
+        return pd.DataFrame([[entry for entry in line.split()] for line in f])  # sori
 
 
 def visualise_graph(graph):
@@ -73,4 +80,4 @@ def graphs_summary(graphs, graph_labels):
     )
 
     print(f"Summary:\n{summary.describe().round(1)}")
-    print(f"Graph labels:\n{graph_labels.value_counts().to_frame()}")
+    print(f"Graph labels:\n{graph_labels}")

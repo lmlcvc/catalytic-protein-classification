@@ -1,7 +1,12 @@
+from tensorboard.notebook import display
+
 from util import file_utils as fu, graph_utils as gu
 
 import os
 import configparser
+
+from stellargraph import datasets
+import tensorflow as tf
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -26,7 +31,14 @@ if __name__ == "__main__":
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
         fu.generate_targets()
 
-    # demo graph generation
-    fu.create_folder(graph_demo_dir)
-    for entry in os.listdir(pdb_demo_dir):
-        gu.generate_graph(pdb_demo_dir, graph_demo_dir, entry.replace(".pdb", ""))
+    # demo model generation
+    if not os.path.isdir(graph_demo_dir):
+        fu.create_folder(graph_demo_dir)
+    if not os.listdir(graph_demo_dir):
+        for entry in os.listdir(pdb_demo_dir):
+            gu.generate_graph(pdb_demo_dir, graph_demo_dir, entry.replace(".pdb", ""))
+
+    # load demo graphs and labels to pass to the model
+    graphs = [gu.load_graph(graph_demo_dir, graph) for graph in os.listdir(graph_demo_dir)]
+    graph_labels = gu.load_graph_labels()
+    gu.graphs_summary(graphs, graph_labels)
