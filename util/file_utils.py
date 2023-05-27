@@ -18,7 +18,6 @@ pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 def create_folder(output_directory):
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
-    return
 
 
 def check_setup(check_setup):
@@ -74,18 +73,21 @@ def generate_targets():
         0 - non-catalytic
         1 - catalytic
     """
-    entries_list = []
+    lines = []
 
     for table in os.listdir(tables_dir):
         df = pd.read_excel(os.path.join(tables_dir, table))
 
-        for entry in df['Entry'].tolist():
-            if 'non-catalytic' in table:
-                entries_list.append(f"{entry} 0")
-            elif 'catalytic' in table:
-                entries_list.append(f"{entry} 1")
-            else:
-                warnings.warn(f"Unexpected table name: {table}")
+        for pdbs in df['PDB'].tolist():
+            pdb_list = [pdb for pdb in pdbs.split(";") if pdb != ""]
+            for pdb in pdb_list:
+                if 'non-catalytic' in table:
+                    lines.append(f"{pdb} 0")
+                elif 'catalytic' in table:
+                    lines.append(f"{pdb} 1")
+                else:
+                    warnings.warn(f"Unexpected table name: {table}")
 
+    create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
-    targets_file.write("\n".join(entry for entry in entries_list))
+    targets_file.write("\n".join(line for line in lines))
