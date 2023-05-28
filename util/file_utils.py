@@ -62,9 +62,9 @@ def check_filecount():
                 else:
                     warnings.warn(f"Unexpected file name: {list_file}")
 
-        print(f"Missing:\ncatalytic = {missing_catalytic}\n"
-              f"non-catalytic = {missing_non_catalytic}\n"
-              f"total = {missing_catalytic + missing_non_catalytic}")
+    print(f"Missing:\ncatalytic = {missing_catalytic}\n"
+          f"non-catalytic = {missing_non_catalytic}\n"
+          f"total = {missing_catalytic + missing_non_catalytic}")
 
 
 def generate_targets():
