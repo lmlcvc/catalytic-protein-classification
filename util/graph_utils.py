@@ -11,6 +11,12 @@ from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph import StellarGraph
 from stellargraph import datasets
 
+from graphein.protein.config import ProteinGraphConfig
+from graphein.protein.edges.atomic import add_atomic_edges
+from graphein.protein.features.nodes.amino_acid import amino_acid_one_hot
+from graphein.protein.graphs import construct_graph
+from graphein.protein.visualisation import plotly_protein_structure_graph
+
 import torch
 import dgl
 import networkx as nx
@@ -21,6 +27,17 @@ config.read('config.ini')
 config = config['default']
 
 targets_dir = config['targets_dir']
+use_graphein = config['use_graphein']
+
+# atom graph
+# graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
+# graphein_config = ProteinGraphConfig(**graphein_params_to_change)
+
+# residue graph
+graphein_config = ProteinGraphConfig()
+graphein_config.dict()
+
+node_features = ['chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor', 'meiler']
 
 
 def get_distance_matrix(coords):
@@ -51,26 +68,73 @@ def pdb_to_graph(pdb_path, distance_threshold=6.0, contain_b_factor=True):
     return graph
 
 
+def pdb_to_graph_graphein(pdb_path):
+    graph = construct_graph(config=graphein_config, path=pdb_path)
+    return graph
+
+
 def generate_graph(source_directory, destination_directory, entry):
+    if use_graphein == "Y" or use_graphein == "y":
+        generate_graph_graphein(source_directory, destination_directory, entry)
+    elif use_graphein == "N" or use_graphein == "n":
+        generate_graph_manual(source_directory, destination_directory, entry)
+
+
+def generate_graph_manual(source_directory, destination_directory, entry):
     graph = pdb_to_graph(os.path.join(source_directory, f"{entry}.pdb"))
     dgl.save_graphs(os.path.join(destination_directory, f"{entry}.bin"), [graph])
 
 
+def generate_graph_graphein(source_directory, destination_directory, entry):
+    graph = pdb_to_graph_graphein(os.path.join(source_directory, f"{entry}.pdb"))
+    nx.write_gpickle(graph, os.path.join(destination_directory, f"{entry}.pickle"))
+
+
 def load_graph(source_directory, entry):
+    if use_graphein == "Y" or use_graphein == "y":
+        load_graph_graphein(source_directory, entry)
+    elif use_graphein == "N" or use_graphein == "n":
+        load_graph_manual(source_directory, entry)
+
+
+def load_graph_manual(source_directory, entry):
     graph_list, label_dict = dgl.load_graphs(os.path.join(source_directory, entry))
-    return graph_list[0]
+    return StellarGraph.from_networkx(dgl.to_networkx(graph_list[0]))
+
+
+def load_graph_graphein(source_directory, entry):
+    graph = nx.read_gpickle(os.path.join(source_directory, entry))
+    return StellarGraph.from_networkx(graph)
 
 
 def load_graph_labels(filename="targets.txt"):
     with open(os.path.join(targets_dir, filename), "r") as f:
-        return pd.DataFrame([[entry for entry in line.split()] for line in f])  # sori
+        return pd.DataFrame([[entry for entry in line.split()] for line in f])
 
 
 def visualise_graph(graph):
-    nx_graph = dgl.to_networkx(graph)
+    if use_graphein == "Y" or use_graphein == "y":
+        visualise_graph_graphein(graph)
+    elif use_graphein == "N" or use_graphein == "n":
+        visualise_graph_manual(graph)
+
+
+def visualise_graph_manual(graph):
     plt.figure(figsize=(4, 3), dpi=200)
-    nx.draw(nx_graph, pos=nx.kamada_kawai_layout(nx_graph), node_size=50, arrows=False)
+    nx.draw(graph, pos=nx.kamada_kawai_layout(graph), node_size=50, arrows=False)
     plt.show()
+
+
+def visualise_graph_graphein(graph):
+    p = plotly_protein_structure_graph(
+        graph,
+        colour_edges_by="kind",
+        colour_nodes_by="degree",
+        label_node_ids=False,
+        plot_title="Peptide backbone graph. Nodes coloured by degree.",
+        node_size_multiplier=1
+    )
+    p.show()
 
 
 def graphs_summary(graphs, graph_labels):
