@@ -16,6 +16,7 @@ from graphein.protein.edges.atomic import add_atomic_edges
 from graphein.protein.features.nodes.amino_acid import amino_acid_one_hot
 from graphein.protein.graphs import construct_graph
 from graphein.protein.visualisation import plotly_protein_structure_graph
+from graphein.utils.utils import generate_feature_dataframe
 
 import torch
 import dgl
@@ -36,8 +37,16 @@ use_graphein = config['use_graphein']
 # residue graph
 graphein_config = ProteinGraphConfig()
 graphein_config.dict()
+# graphein_params_to_change = {"protein_df_processing_functions": True}
+# graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
-node_features = ['chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor', 'meiler']
+# node_features = pd.DataFrame(
+#     {'chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor'}
+# )
+
+node_features = pd.DataFrame(
+    {"b_factor"}
+)
 
 
 def get_distance_matrix(coords):
@@ -68,8 +77,8 @@ def pdb_to_graph(pdb_path, distance_threshold=6.0, contain_b_factor=True):
     return graph
 
 
-def pdb_to_graph_graphein(pdb_path):
-    graph = construct_graph(config=graphein_config, path=pdb_path)
+def pdb_to_graph_graphein(pdb_path, entry):
+    graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
     return graph
 
 
@@ -86,8 +95,16 @@ def generate_graph_manual(source_directory, destination_directory, entry):
 
 
 def generate_graph_graphein(source_directory, destination_directory, entry):
-    graph = pdb_to_graph_graphein(os.path.join(source_directory, f"{entry}.pdb"))
-    nx.write_gpickle(graph, os.path.join(destination_directory, f"{entry}.pickle"))
+    graph = pdb_to_graph_graphein(os.path.join(source_directory, f"{entry}.pdb"), entry)
+    # nx.write_graphml(graph, os.path.join(destination_directory, f"{entry}.graphml"))
+    nx.write_gexf(graph, os.path.join(destination_directory, f"{entry}.gexf"))
+
+
+def generate_graph_direct(source_directory, entry):
+    pdb_path = os.path.join(source_directory, f"{entry}.pdb")
+    graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+    print(graph.nodes.data())
+    return StellarGraph.from_networkx(graph, node_features=node_features)
 
 
 def load_graph(source_directory, entry):
@@ -103,7 +120,8 @@ def load_graph_manual(source_directory, entry):
 
 
 def load_graph_graphein(source_directory, entry):
-    graph = nx.read_gpickle(os.path.join(source_directory, entry))
+    # graph = nx.read_graphml(os.path.join(source_directory, entry))
+    graph = nx.read_gexf(os.path.join(source_directory, entry))
     return StellarGraph.from_networkx(graph)
 
 

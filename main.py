@@ -31,19 +31,28 @@ if __name__ == "__main__":
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
         fu.generate_targets()
 
-    # graph generation
-    if not os.path.isdir(graph_dir):
-        fu.create_folder(graph_dir)
-    if not os.listdir(graph_dir):
-        for entry in os.listdir(pdb_catalytic_dir):
-            print(f"Generating graph for {entry}")
-            gu.generate_graph(pdb_catalytic_dir, graph_dir, entry.replace(".pdb", ""))
-        for entry in os.listdir(pdb_non_catalytic_dir):
-            print(f"Generating graph for {entry}")
-            gu.generate_graph(pdb_non_catalytic_dir, graph_dir, entry.replace(".pdb", ""))
+    # # graph generation
+    # if not os.path.isdir(graph_dir):
+    #     fu.create_folder(graph_dir)
+    # if not os.listdir(graph_dir):
+    #     for entry in os.listdir(pdb_catalytic_dir):
+    #         print(f"Generating graph for {entry}")
+    #         gu.generate_graph(pdb_catalytic_dir, graph_dir, entry.replace(".pdb", ""))
+    #     for entry in os.listdir(pdb_non_catalytic_dir):
+    #         print(f"Generating graph for {entry}")
+    #         gu.generate_graph(pdb_non_catalytic_dir, graph_dir, entry.replace(".pdb", ""))
 
     # load graphs and labels to pass to the model
-    graphs = [gu.load_graph(graph_dir, graph) for graph in os.listdir(graph_dir)]
+    # graphs = [gu.load_graph(graph_dir, graph) for graph in os.listdir(graph_dir)]
+
+    graphs_catalytic = [gu.generate_graph_direct(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
+                        os.listdir(pdb_catalytic_dir)]
+
+    graphs_non_catalytic = [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
+                            os.listdir(pdb_non_catalytic_dir)]
+
+    graphs = graphs_catalytic + graphs_non_catalytic
+
     graph_labels = gu.load_graph_labels()
     gu.graphs_summary(graphs, graph_labels)
     graph_labels.value_counts().to_frame()
