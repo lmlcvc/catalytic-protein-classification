@@ -1,6 +1,7 @@
 import configparser
 import os.path
 
+import pandas
 import pandas as pd
 import numpy as np
 from biopandas.pdb import PandasPdb
@@ -103,8 +104,19 @@ def generate_graph_graphein(source_directory, destination_directory, entry):
 def generate_graph_direct(source_directory, entry):
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
     graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
-    print(graph.nodes.data())
-    return StellarGraph.from_networkx(graph, node_features=node_features)
+    atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
+    nodes = nx.to_pandas_adjacency(graph)
+    edges = nx.to_pandas_edgelist(graph)
+    # edges.drop(['kind'], axis=1)
+    graph_df = pandas.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+    graph_df = graph_df['b_factor']
+    # print(graph.nodes())
+    # print(atom_df.head())
+    # print(nodes.head())
+    # print(edges.head())
+    print(graph_df.head())
+    # return StellarGraph(edges=edges, edge_weight_column="distance")
+    return StellarGraph(graph_df)
 
 
 def load_graph(source_directory, entry):

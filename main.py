@@ -45,20 +45,24 @@ if __name__ == "__main__":
     # load graphs and labels to pass to the model
     # graphs = [gu.load_graph(graph_dir, graph) for graph in os.listdir(graph_dir)]
 
-    graphs_catalytic = [gu.generate_graph_direct(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
-                        os.listdir(pdb_catalytic_dir)]
+    graph = gu.generate_graph_direct(pdb_catalytic_dir, os.listdir(pdb_catalytic_dir)[0].replace(".pdb", ""))
+    print(graph.info())
+    print(graph.nodes())
 
-    graphs_non_catalytic = [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
-                            os.listdir(pdb_non_catalytic_dir)]
+    # graphs_catalytic = [gu.generate_graph_direct(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
+    #                     os.listdir(pdb_catalytic_dir)]
+    #
+    # graphs_non_catalytic = [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
+    #                         os.listdir(pdb_non_catalytic_dir)]
+    #
+    # graphs = graphs_catalytic + graphs_non_catalytic
 
-    graphs = graphs_catalytic + graphs_non_catalytic
-
-    graph_labels = gu.load_graph_labels()
-    gu.graphs_summary(graphs, graph_labels)
-    graph_labels.value_counts().to_frame()
-    graph_labels = pd.get_dummies(graph_labels, drop_first=True)
-    # Adapt graphs to Keras model
-    graph_generator = PaddedGraphGenerator(graphs=graphs)
+    # graph_labels = gu.load_graph_labels()
+    # gu.graphs_summary(graphs, graph_labels)
+    # graph_labels.value_counts().to_frame()
+    # graph_labels = pd.get_dummies(graph_labels, drop_first=True)
+    # # Adapt graphs to Keras model
+    # graph_generator = PaddedGraphGenerator(graphs=graphs)
 
     # Create classification model
     # model = md.create_graph_classification_model_gcn(graph_generator)
