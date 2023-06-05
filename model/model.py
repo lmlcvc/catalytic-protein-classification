@@ -9,17 +9,7 @@ import stellargraph as sg
 from stellargraph.mapper import PaddedGraphGenerator
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
-from stellargraph import StellarGraph
-from stellargraph import datasets
 
-from tensorflow.python.keras import Model
-# from tensorflow.python.keras.optimizers import Adam
-from tensorflow.python.keras.optimizer_v1 import Adam
-from tensorflow.python.keras.layers import Dense
-from tensorflow.python.keras.losses import binary_crossentropy
-from tensorflow.python.keras.callbacks import EarlyStopping
-from tensorflow.python.keras.layers import Dense, Conv1D, MaxPool1D, Dropout, Flatten
-from tensorflow.python.keras.losses import binary_crossentropy
 import tensorflow as tf
 
 import torch
@@ -36,12 +26,6 @@ def create_graph_classification_model_gcn(generator):
         dropout=0.5,
     )
     x_inp, x_out = gc_model.in_out_tensors()
-    # Only dicts, lists, and tuples of input tensors are supported. Nested inputs are not supported (e.g. lists of list or dicts of dict)
-    print(type(x_inp), type(x_out))
-    print(x_inp)
-
-    # for tensor in x_inp:
-    #     tf.print(tensor)
 
     predictions = tf.keras.layers.Dense(units=32, activation="relu")(x_out)
     predictions = tf.keras.layers.Dense(units=16, activation="relu")(predictions)
@@ -49,7 +33,9 @@ def create_graph_classification_model_gcn(generator):
 
     # Create the Keras model and prepare it for training
     model = tf.keras.Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=tf.keras.optimizers.Adam(0.005), loss=binary_crossentropy, metrics=["acc"])
+    model.compile(optimizer=tf.keras.optimizers.Adam(0.005),
+                  loss=tf.keras.losses.binary_crossentropy,
+                  metrics=["acc"])
 
     return model
 
@@ -67,20 +53,22 @@ def create_graph_classification_model_dcgnn(generator):
     )
     x_inp, x_out = dgcnn_model.in_out_tensors()
 
-    x_out = Conv1D(filters=16, kernel_size=sum(layer_sizes), strides=sum(layer_sizes))(x_out)
-    x_out = MaxPool1D(pool_size=2)(x_out)
+    x_out = tf.keras.layers.Conv1D(filters=16, kernel_size=sum(layer_sizes), strides=sum(layer_sizes))(x_out)
+    x_out = tf.keras.layers.MaxPool1D(pool_size=2)(x_out)
 
-    x_out = Conv1D(filters=32, kernel_size=5, strides=1)(x_out)
+    x_out = tf.keras.layers.Conv1D(filters=32, kernel_size=5, strides=1)(x_out)
 
-    x_out = Flatten()(x_out)
+    x_out = tf.keras.layers.Flatten()(x_out)
 
-    x_out = Dense(units=128, activation="relu")(x_out)
-    x_out = Dropout(rate=0.5)(x_out)
+    x_out = tf.keras.layers.Dense(units=128, activation="relu")(x_out)
+    x_out = tf.keras.layers.Dropout(rate=0.5)(x_out)
 
-    predictions = Dense(units=1, activation="sigmoid")(x_out)
+    predictions = tf.keras.layers.Dense(units=1, activation="sigmoid")(x_out)
 
     # Create the Keras model and prepare it for training
-    model = Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=Adam(lr=0.0001), loss=binary_crossentropy, metrics=["acc"])
+    model = tf.keras.Model(inputs=x_inp, outputs=predictions)
+    model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+                  loss=tf.keras.losses.binary_crossentropy,
+                  metrics=["acc"])
 
     return model

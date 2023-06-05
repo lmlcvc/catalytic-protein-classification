@@ -82,5 +82,6 @@ if __name__ == "__main__":
     logging.info("Created GCN model")
     print(model_gcn.summary())
 
-    # model_dcgnn = md.create_graph_classification_model_dcgnn(graph_generator)
-    # logging.info("Created DCGNN model")
+    model_dcgnn = md.create_graph_classification_model_dcgnn(graph_generator)
+    logging.info("Created DCGNN model")
+    print(model_dcgnn.summary())
