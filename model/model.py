@@ -36,13 +36,20 @@ def create_graph_classification_model_gcn(generator):
         dropout=0.5,
     )
     x_inp, x_out = gc_model.in_out_tensors()
-    predictions = Dense(units=32, activation="relu")(x_out)
-    predictions = Dense(units=16, activation="relu")(predictions)
-    predictions = Dense(units=1, activation="sigmoid")(predictions)
+    # Only dicts, lists, and tuples of input tensors are supported. Nested inputs are not supported (e.g. lists of list or dicts of dict)
+    print(type(x_inp), type(x_out))
+    print(x_inp)
+
+    # for tensor in x_inp:
+    #     tf.print(tensor)
+
+    predictions = tf.keras.layers.Dense(units=32, activation="relu")(x_out)
+    predictions = tf.keras.layers.Dense(units=16, activation="relu")(predictions)
+    predictions = tf.keras.layers.Dense(units=1, activation="sigmoid")(predictions)
 
     # Create the Keras model and prepare it for training
-    model = Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=Adam(0.005), loss=binary_crossentropy, metrics=["acc"])
+    model = tf.keras.Model(inputs=x_inp, outputs=predictions)
+    model.compile(optimizer=tf.keras.optimizers.Adam(0.005), loss=binary_crossentropy, metrics=["acc"])
 
     return model
 
