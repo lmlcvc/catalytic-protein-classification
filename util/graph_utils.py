@@ -1,7 +1,6 @@
 import configparser
 import os.path
 
-import pandas
 import pandas as pd
 import numpy as np
 from biopandas.pdb import PandasPdb
@@ -108,15 +107,15 @@ def generate_graph_direct(source_directory, entry):
     nodes = nx.to_pandas_adjacency(graph)
     edges = nx.to_pandas_edgelist(graph)
     # edges.drop(['kind'], axis=1)
-    graph_df = pandas.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
-    graph_df = graph_df['b_factor']
+    graph_df = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+    graph_df = graph_df['b_factor'].to_frame()
     # print(graph.nodes())
     # print(atom_df.head())
     # print(nodes.head())
     # print(edges.head())
-    print(graph_df.head())
+    # print(graph_df.head())
     # return StellarGraph(edges=edges, edge_weight_column="distance")
-    return StellarGraph(graph_df)
+    return StellarGraph(graph_df)  # , node_type_default=pd.DataFrame)
 
 
 def load_graph(source_directory, entry):
