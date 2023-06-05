@@ -40,12 +40,8 @@ graphein_config.dict()
 # graphein_params_to_change = {"protein_df_processing_functions": True}
 # graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
-# node_features = pd.DataFrame(
-#     {'chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor'}
-# )
-
 node_features = pd.DataFrame(
-    {"b_factor"}
+    {'chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor'}
 )
 
 
@@ -103,19 +99,36 @@ def generate_graph_graphein(source_directory, destination_directory, entry):
 def generate_graph_direct(source_directory, entry):
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
     graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+
     atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
     nodes = nx.to_pandas_adjacency(graph)
     edges = nx.to_pandas_edgelist(graph)
     # edges.drop(['kind'], axis=1)
+
     graph_df = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
-    graph_df = graph_df['b_factor'].to_frame()
+
+    # categorise string data
+    graph_df.residue_name = pd.Categorical(graph_df.residue_name)
+    graph_df['residue_name'] = graph_df.residue_name.cat.codes
+
+    graph_df.atom_type = pd.Categorical(graph_df.atom_type)
+    graph_df['atom_type'] = graph_df.atom_type.cat.codes
+
+    graph_df.element_symbol = pd.Categorical(graph_df.element_symbol)
+    graph_df['element_symbol'] = graph_df.element_symbol.cat.codes
+
+    # split coords into separate columns
+    graph_df[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(graph_df.coords.tolist(), index=graph_df.index)
+
+    # remove unnecessary columns
+    graph_df = graph_df.drop(['chain_id', 'coords', 'meiler'], axis=1)
+
     # print(graph.nodes())
     # print(atom_df.head())
     # print(nodes.head())
     # print(edges.head())
-    # print(graph_df.head())
     # return StellarGraph(edges=edges, edge_weight_column="distance")
-    return StellarGraph(graph_df)  # , node_type_default=pd.DataFrame)
+    return StellarGraph(graph_df)
 
 
 def load_graph(source_directory, entry):
