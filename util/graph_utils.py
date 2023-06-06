@@ -37,12 +37,14 @@ use_graphein = config['use_graphein']
 # residue graph
 graphein_config = ProteinGraphConfig()
 graphein_config.dict()
+
+
 # graphein_params_to_change = {"protein_df_processing_functions": True}
 # graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
-node_features = pd.DataFrame(
-    {'chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor'}
-)
+# node_features = pd.DataFrame(
+#     {'chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor'}
+# )
 
 
 def get_distance_matrix(coords):
@@ -101,13 +103,20 @@ def generate_graph_direct(source_directory, entry):
     graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
 
     atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
-    nodes = nx.to_pandas_adjacency(graph)
+    # nodes = nx.to_pandas_adjacency(graph)           # adjacency matrix?
     edges = nx.to_pandas_edgelist(graph)
     # edges.drop(['kind'], axis=1)
 
     graph_df = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+    # graph_df = graph_df.rename_axis('id')
+    # graph_df.reset_index(inplace=True)
 
     # categorise string data
+    # TODO remove atom type and element symbol for residue graph
+    # TODO store category replacements info
+    # graph_df.id = pd.Categorical(graph_df.id)
+    # graph_df['id'] = graph_df.id.cat.codes
+
     graph_df.residue_name = pd.Categorical(graph_df.residue_name)
     graph_df['residue_name'] = graph_df.residue_name.cat.codes
 
@@ -123,12 +132,19 @@ def generate_graph_direct(source_directory, entry):
     # remove unnecessary columns
     graph_df = graph_df.drop(['chain_id', 'coords', 'meiler'], axis=1)
 
+
+    ###################
+    # TODO rewrite to separate functions
+
+    edges['kind'] = edges['kind'].astype(str).replace(["{", "}"], "")
+    edges.kind = pd.Categorical(edges.kind)
+    edges['kind'] = edges.kind.cat.codes
+
     # print(graph.nodes())
     # print(atom_df.head())
     # print(nodes.head())
-    # print(edges.head())
-    # return StellarGraph(edges=edges, edge_weight_column="distance")
-    return StellarGraph(graph_df)
+    # print(graph_df.head())
+    return StellarGraph(nodes=graph_df, edges=edges)
 
 
 def load_graph(source_directory, entry):
