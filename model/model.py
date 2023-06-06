@@ -1,21 +1,7 @@
-import configparser
-import os.path
-
-import pandas as pd
-import numpy as np
-from biopandas.pdb import PandasPdb
-
-import stellargraph as sg
-from stellargraph.mapper import PaddedGraphGenerator
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
 
 import tensorflow as tf
-
-import torch
-import dgl
-import networkx as nx
-import matplotlib.pyplot as plt
 
 
 def create_graph_classification_model_gcn(generator):

@@ -1,27 +1,19 @@
 import configparser
 import os.path
 
-import pandas as pd
-import numpy as np
-from biopandas.pdb import PandasPdb
-
-import stellargraph as sg
-from stellargraph.mapper import PaddedGraphGenerator
-from stellargraph.layer import GCNSupervisedGraphClassification
-from stellargraph import StellarGraph
-from stellargraph import datasets
-
-from graphein.protein.config import ProteinGraphConfig
-from graphein.protein.edges.atomic import add_atomic_edges
-from graphein.protein.features.nodes.amino_acid import amino_acid_one_hot
-from graphein.protein.graphs import construct_graph
-from graphein.protein.visualisation import plotly_protein_structure_graph
-from graphein.utils.utils import generate_feature_dataframe
-
 import torch
 import dgl
 import networkx as nx
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from biopandas.pdb import PandasPdb
+from stellargraph import StellarGraph
+
+from graphein.protein.config import ProteinGraphConfig
+from graphein.protein.edges.atomic import add_atomic_edges
+from graphein.protein.graphs import construct_graph
+from graphein.protein.visualisation import plotly_protein_structure_graph
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -32,21 +24,17 @@ graph_type = config['graph_type']
 
 targets_dir = config['targets_dir']
 
-# atom graph
-# graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
-# graphein_config = ProteinGraphConfig(**graphein_params_to_change)
-
-# residue graph
-graphein_config = ProteinGraphConfig()
-graphein_config.dict()
-
-
+# graphein config
+graphein_config = None
+graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
 # graphein_params_to_change = {"protein_df_processing_functions": True}
-# graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
-# node_features = pd.DataFrame(
-#     {'chain_id', 'residue_name', 'residue_number', 'atom_type', 'element_symbol', 'coords', 'b_factor'}
-# )
+if graph_type == "residue":
+    graphein_config = ProteinGraphConfig()
+elif graph_type == "atom":
+    graphein_config = ProteinGraphConfig(**graphein_params_to_change)
+
+graphein_config.dict()
 
 
 def get_distance_matrix(coords):
@@ -96,7 +84,6 @@ def generate_graph_manual(source_directory, destination_directory, entry):
 
 def generate_graph_graphein(source_directory, destination_directory, entry):
     graph = pdb_to_graph_graphein(os.path.join(source_directory, f"{entry}.pdb"), entry)
-    # nx.write_graphml(graph, os.path.join(destination_directory, f"{entry}.graphml"))
     nx.write_gexf(graph, os.path.join(destination_directory, f"{entry}.gexf"))
 
 
