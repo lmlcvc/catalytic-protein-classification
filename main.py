@@ -23,6 +23,7 @@ targets_dir = config['targets_dir']
 pdb_catalytic_dir = config['pdb_catalytic_dir']
 pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 pdb_demo_dir = config['pdb_demo_dir']
+
 graph_dir = config['graph_dir']
 graph_demo_dir = config['graph_demo_dir']
 
@@ -40,33 +41,23 @@ if __name__ == "__main__":
         logging.info("Finished target generation")
 
     # # graph generation
-    # if not os.path.isdir(graph_dir):
-    #     fu.create_folder(graph_dir)
-    # if not os.listdir(graph_dir):
-    #     for entry in os.listdir(pdb_catalytic_dir):
-    #         print(f"Generating graph for {entry}")
-    #         gu.generate_graph(pdb_catalytic_dir, graph_dir, entry.replace(".pdb", ""))
-    #     for entry in os.listdir(pdb_non_catalytic_dir):
-    #         print(f"Generating graph for {entry}")
-    #         gu.generate_graph(pdb_non_catalytic_dir, graph_dir, entry.replace(".pdb", ""))
+    graphs = []
+    if not os.listdir(graph_dir):
+        fu.create_folder(graph_dir)
+        if demo_run == "Y" or demo_run == "y":
+            [gu.generate_graph_direct(pdb_demo_dir, entry.replace(".pdb", "")) for entry in os.listdir(pdb_demo_dir)]
+            logging.info("Generated demo graphs")
 
-    # load graphs and labels to pass to the model
-    # graphs = [gu.load_graph(graph_dir, graph) for graph in os.listdir(graph_dir)]
+        else:
+            [gu.generate_graph_direct(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
+             os.listdir(pdb_catalytic_dir)]
+            logging.info("Generated catalytic graphs")
 
-    if demo_run == "Y" or demo_run == "y":
-        graphs = [gu.generate_graph_direct(pdb_demo_dir, entry.replace(".pdb", "")) for entry in
-                  os.listdir(pdb_demo_dir)]
-        logging.info("Generated demo graphs")
-    else:
-        graphs_catalytic = [gu.generate_graph_direct(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
-                            os.listdir(pdb_catalytic_dir)]
-        logging.info("Generated catalytic graphs")
+            [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
+             os.listdir(pdb_non_catalytic_dir)]
+            logging.info("Generated non-catalytic graphs")
 
-        graphs_non_catalytic = [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
-                                os.listdir(pdb_non_catalytic_dir)]
-        logging.info("Generated non-catalytic graphs")
-
-        graphs = graphs_catalytic + graphs_non_catalytic
+    graphs = gu.load_graphs(graph_dir)
 
     graph_labels = gu.load_graph_labels()
     gu.graphs_summary(graphs, graph_labels)

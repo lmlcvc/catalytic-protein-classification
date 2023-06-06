@@ -23,6 +23,7 @@ use_graphein = config['use_graphein']
 graph_type = config['graph_type']
 
 targets_dir = config['targets_dir']
+graph_dir = config['graph_dir']
 
 # graphein config
 graphein_config = None
@@ -70,23 +71,6 @@ def pdb_to_graph_graphein(pdb_path, entry):
     return graph
 
 
-def generate_graph(source_directory, destination_directory, entry):
-    if use_graphein == "Y" or use_graphein == "y":
-        generate_graph_graphein(source_directory, destination_directory, entry)
-    elif use_graphein == "N" or use_graphein == "n":
-        generate_graph_manual(source_directory, destination_directory, entry)
-
-
-def generate_graph_manual(source_directory, destination_directory, entry):
-    graph = pdb_to_graph(os.path.join(source_directory, f"{entry}.pdb"))
-    dgl.save_graphs(os.path.join(destination_directory, f"{entry}.bin"), [graph])
-
-
-def generate_graph_graphein(source_directory, destination_directory, entry):
-    graph = pdb_to_graph_graphein(os.path.join(source_directory, f"{entry}.pdb"), entry)
-    nx.write_gexf(graph, os.path.join(destination_directory, f"{entry}.gexf"))
-
-
 def prepare_nodes(nodes, graph_type="atom"):
     # TODO store category replacements info
 
@@ -111,11 +95,14 @@ def prepare_nodes(nodes, graph_type="atom"):
     else:
         raise f"Unexpected graph type argument: {graph_type}"
 
+    return nodes
+
 
 def prepare_edges(edges):
     edges['kind'] = edges['kind'].astype(str).replace(["{", "}"], "")
     edges.kind = pd.Categorical(edges.kind)
     edges['kind'] = edges.kind.cat.codes
+    return edges
 
 
 def generate_graph_direct(source_directory, entry):
@@ -126,30 +113,31 @@ def generate_graph_direct(source_directory, entry):
     # adjacency_matrix = nx.to_pandas_adjacency(graph)
 
     nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
-    prepare_nodes(nodes, graph_type=graph_type)
+    nodes = prepare_nodes(nodes, graph_type=graph_type)
 
     edges = nx.to_pandas_edgelist(graph)
-    prepare_edges(edges)
+    edges = prepare_edges(edges)
 
-    return StellarGraph(nodes=nodes, edges=edges)
-
-
-def load_graph(source_directory, entry):
-    if use_graphein == "Y" or use_graphein == "y":
-        load_graph_graphein(source_directory, entry)
-    elif use_graphein == "N" or use_graphein == "n":
-        load_graph_manual(source_directory, entry)
+    nodes.to_csv(os.path.join(graph_dir, f"{entry}_nodes.csv"))
+    edges.to_csv(os.path.join(graph_dir, f"{entry}_edges.csv"))
 
 
-def load_graph_manual(source_directory, entry):
-    graph_list, label_dict = dgl.load_graphs(os.path.join(source_directory, entry))
-    return StellarGraph.from_networkx(dgl.to_networkx(graph_list[0]))
+def load_graphs(source_directory):
+    graphs = []
 
+    filenames = sorted(os.listdir(source_directory))
+    filename_pairs = [filenames[i: i + 2] for i in range(0, len(filenames), 2)]
 
-def load_graph_graphein(source_directory, entry):
-    # graph = nx.read_graphml(os.path.join(source_directory, entry))
-    graph = nx.read_gexf(os.path.join(source_directory, entry))
-    return StellarGraph.from_networkx(graph)
+    for edges, nodes in filename_pairs:
+        if nodes[0:3] != edges[0:3]:
+            raise f"PDB names for (nodes, edges) pair do not match: {nodes}, {edges}"
+
+        edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)
+        nodes_df = pd.read_csv(os.path.join(source_directory, nodes), index_col=0)
+
+        graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
+
+    return graphs
 
 
 def load_graph_labels(filename="targets.txt"):
