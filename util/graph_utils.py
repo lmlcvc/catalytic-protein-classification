@@ -27,8 +27,10 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
-targets_dir = config['targets_dir']
 use_graphein = config['use_graphein']
+graph_type = config['graph_type']
+
+targets_dir = config['targets_dir']
 
 # atom graph
 # graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
@@ -98,33 +100,11 @@ def generate_graph_graphein(source_directory, destination_directory, entry):
     nx.write_gexf(graph, os.path.join(destination_directory, f"{entry}.gexf"))
 
 
-def generate_graph_direct(source_directory, entry):
-    pdb_path = os.path.join(source_directory, f"{entry}.pdb")
-    graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
-
-    atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
-    # adjacency_matrix = nx.to_pandas_adjacency(graph)
-    edges = nx.to_pandas_edgelist(graph)
-    # edges.drop(['kind'], axis=1)
-
-    nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
-    # nodes = nodes.rename_axis('id')
-    # nodes.reset_index(inplace=True)
-
-    # categorise string data
-    # TODO remove atom type and element symbol for residue graph
+def prepare_nodes(nodes, graph_type="atom"):
     # TODO store category replacements info
-    # nodes.id = pd.Categorical(nodes.id)
-    # nodes['id'] = nodes.id.cat.codes
 
     nodes.residue_name = pd.Categorical(nodes.residue_name)
     nodes['residue_name'] = nodes.residue_name.cat.codes
-
-    nodes.atom_type = pd.Categorical(nodes.atom_type)
-    nodes['atom_type'] = nodes.atom_type.cat.codes
-
-    nodes.element_symbol = pd.Categorical(nodes.element_symbol)
-    nodes['element_symbol'] = nodes.element_symbol.cat.codes
 
     # split coords into separate columns
     nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
@@ -132,18 +112,38 @@ def generate_graph_direct(source_directory, entry):
     # remove unnecessary columns
     nodes = nodes.drop(['chain_id', 'coords', 'meiler'], axis=1)
 
+    # remove or transform data depending on graph type
+    if graph_type == "atom":
+        nodes.atom_type = pd.Categorical(nodes.atom_type)
+        nodes['atom_type'] = nodes.atom_type.cat.codes
 
-    ###################
-    # TODO rewrite to separate functions
+        nodes.element_symbol = pd.Categorical(nodes.element_symbol)
+        nodes['element_symbol'] = nodes.element_symbol.cat.codes
+    elif graph_type == "residue":
+        nodes = nodes.drop(['atom_type', 'element_symbol'], axis=1)
+    else:
+        raise f"Unexpected graph type argument: {graph_type}"
 
+
+def prepare_edges(edges):
     edges['kind'] = edges['kind'].astype(str).replace(["{", "}"], "")
     edges.kind = pd.Categorical(edges.kind)
     edges['kind'] = edges.kind.cat.codes
 
-    # print(graph.nodes())
-    # print(atom_df.head())
-    # print(nodes.head())
-    # print(nodes.head())
+
+def generate_graph_direct(source_directory, entry):
+    pdb_path = os.path.join(source_directory, f"{entry}.pdb")
+    graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+
+    atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
+    # adjacency_matrix = nx.to_pandas_adjacency(graph)
+
+    nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+    prepare_nodes(nodes, graph_type=graph_type)
+
+    edges = nx.to_pandas_edgelist(graph)
+    prepare_edges(edges)
+
     return StellarGraph(nodes=nodes, edges=edges)
 
 
