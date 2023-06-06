@@ -103,34 +103,34 @@ def generate_graph_direct(source_directory, entry):
     graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
 
     atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
-    # nodes = nx.to_pandas_adjacency(graph)           # adjacency matrix?
+    # adjacency_matrix = nx.to_pandas_adjacency(graph)
     edges = nx.to_pandas_edgelist(graph)
     # edges.drop(['kind'], axis=1)
 
-    graph_df = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
-    # graph_df = graph_df.rename_axis('id')
-    # graph_df.reset_index(inplace=True)
+    nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+    # nodes = nodes.rename_axis('id')
+    # nodes.reset_index(inplace=True)
 
     # categorise string data
     # TODO remove atom type and element symbol for residue graph
     # TODO store category replacements info
-    # graph_df.id = pd.Categorical(graph_df.id)
-    # graph_df['id'] = graph_df.id.cat.codes
+    # nodes.id = pd.Categorical(nodes.id)
+    # nodes['id'] = nodes.id.cat.codes
 
-    graph_df.residue_name = pd.Categorical(graph_df.residue_name)
-    graph_df['residue_name'] = graph_df.residue_name.cat.codes
+    nodes.residue_name = pd.Categorical(nodes.residue_name)
+    nodes['residue_name'] = nodes.residue_name.cat.codes
 
-    graph_df.atom_type = pd.Categorical(graph_df.atom_type)
-    graph_df['atom_type'] = graph_df.atom_type.cat.codes
+    nodes.atom_type = pd.Categorical(nodes.atom_type)
+    nodes['atom_type'] = nodes.atom_type.cat.codes
 
-    graph_df.element_symbol = pd.Categorical(graph_df.element_symbol)
-    graph_df['element_symbol'] = graph_df.element_symbol.cat.codes
+    nodes.element_symbol = pd.Categorical(nodes.element_symbol)
+    nodes['element_symbol'] = nodes.element_symbol.cat.codes
 
     # split coords into separate columns
-    graph_df[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(graph_df.coords.tolist(), index=graph_df.index)
+    nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
     # remove unnecessary columns
-    graph_df = graph_df.drop(['chain_id', 'coords', 'meiler'], axis=1)
+    nodes = nodes.drop(['chain_id', 'coords', 'meiler'], axis=1)
 
 
     ###################
@@ -143,8 +143,8 @@ def generate_graph_direct(source_directory, entry):
     # print(graph.nodes())
     # print(atom_df.head())
     # print(nodes.head())
-    # print(graph_df.head())
-    return StellarGraph(nodes=graph_df, edges=edges)
+    # print(nodes.head())
+    return StellarGraph(nodes=nodes, edges=edges)
 
 
 def load_graph(source_directory, entry):
