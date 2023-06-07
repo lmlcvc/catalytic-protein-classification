@@ -40,10 +40,10 @@ if __name__ == "__main__":
         fu.generate_targets()
         logging.info("Finished target generation")
 
-    # # graph generation
+    # graph generation
     graphs = []
+    fu.create_folder(graph_dir)
     if not os.listdir(graph_dir):
-        fu.create_folder(graph_dir)
         if demo_run == "Y" or demo_run == "y":
             [gu.generate_graph_direct(pdb_demo_dir, entry.replace(".pdb", "")) for entry in os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
@@ -56,6 +56,12 @@ if __name__ == "__main__":
             [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
+
+        # TODO categories
+        # load all dfs' unique values for defined columns to one df
+        # enumerate (categorise) data from that df
+        # sveta petko moli za nas
+        # replace category name with category index, as when using foreign key
 
     graphs = gu.load_graphs(graph_dir)
 
