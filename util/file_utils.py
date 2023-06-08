@@ -91,21 +91,3 @@ def generate_targets():
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
     targets_file.write("\n".join(line for line in lines))
-
-
-def store_categories(df, column_list, output_directory, df_type="nodes"):
-    # TODO categories should always be the same - generate categories first
-    # get all unique values of column across all pdbs
-    # store to category list
-    # transform pdb dfs according to pregenerated category list
-    create_folder(output_directory)
-
-    for column in column_list:
-        categories = df[str(column)].astype('category')
-        categories_dict = dict(enumerate(categories.cat.categories))
-        print(categories_dict)
-
-        categories_df = pd.DataFrame(categories_dict, index=[0]).T
-        # TODO remove 0 at top
-        categories_df.to_csv(os.path.join(output_directory, f"{column}_{df_type}.csv"),
-                             index=False)

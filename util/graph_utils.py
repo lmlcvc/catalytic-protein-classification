@@ -74,10 +74,29 @@ def pdb_to_graph_graphein(pdb_path, entry):
     return graph
 
 
-def prepare_nodes(nodes):
-    # nodes.residue_name = pd.Categorical(nodes.residue_name)
-    # nodes['residue_name'] = nodes.residue_name.cat.codes
+def replace_categories(df, source_dir, df_type):
+    if df_type == "nodes":
+        columns = ["residue_name"]
+        if graph_type == "atom":
+            columns.extend(["atom_type", "element_symbol"])
+    elif df_type == "edges":  # TODO maybe encode source and target as well
+        columns = ["kind"]
+    else:
+        raise f"Wrong df type: {df_type}"
 
+    # replace column values with category codes
+    for column in columns:
+        categories_file = [filename for filename in os.listdir(source_dir) if filename.startswith(column)][0]
+
+        categories_df = pd.read_csv(os.path.join(source_dir, categories_file), header=0)
+        categories_dict = categories_df.set_index("value")["category"].to_dict()
+
+        df = df.replace({str(column): categories_dict})
+
+    return df
+
+
+def prepare_nodes(nodes):
     # split coords into separate columns
     nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
@@ -85,23 +104,18 @@ def prepare_nodes(nodes):
     nodes = nodes.drop(['chain_id', 'coords', 'meiler'], axis=1)
 
     # remove or transform data depending on graph type
-    # if graph_type == "atom":
-    #     nodes.atom_type = pd.Categorical(nodes.atom_type)
-    #     nodes['atom_type'] = nodes.atom_type.cat.codes
-    #
-    #     nodes.element_symbol = pd.Categorical(nodes.element_symbol)
-    #     nodes['element_symbol'] = nodes.element_symbol.cat.codes
-    # elif graph_type == "residue":
-    #     nodes = nodes.drop(['atom_type', 'element_symbol'], axis=1)
-    # else:
-    #     raise f"Unexpected graph type argument: {graph_type}"
+    if graph_type == "atom":
+        nodes.atom_type = pd.Categorical(nodes.atom_type)
+        nodes['atom_type'] = nodes.atom_type.cat.codes
+
+        nodes.element_symbol = pd.Categorical(nodes.element_symbol)
+        nodes['element_symbol'] = nodes.element_symbol.cat.codes
+    elif graph_type == "residue":
+        nodes = nodes.drop(['atom_type', 'element_symbol'], axis=1)
+    else:
+        raise f"Unexpected graph type argument: {graph_type}"
 
     return nodes
-
-
-def prepare_edges(edges):
-    edges['kind'] = edges.kind.cat.codes
-    return edges
 
 
 def generate_graph_direct(source_directory, entry):  # TODO rename
@@ -114,24 +128,50 @@ def generate_graph_direct(source_directory, entry):  # TODO rename
     nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
     edges = nx.to_pandas_edgelist(graph)
 
-    # store columns categories for interpretation
-    # nodes_categories = ['residue_name']
-    # edges_categories = ['kind']
-    # if graph_type == "atom":
-    #     nodes_categories.extend(['atom_type', 'element_symbol'])
-    # fu.store_categories(nodes, nodes_categories, categories_dir, df_type="nodes")
-    #
-    # edges['kind'] = edges['kind'].astype(str).replace(["{", "}"], "")
-    # edges.kind = pd.Categorical(edges.kind)
-    # fu.store_categories(edges, edges_categories, categories_dir, df_type="edges")
-
     nodes = prepare_nodes(nodes)
-    edges = prepare_edges(edges)
-
-    # TODO category info
 
     nodes.to_csv(os.path.join(graph_dir, f"{entry}_nodes.csv"))
     edges.to_csv(os.path.join(graph_dir, f"{entry}_edges.csv"))
+
+
+def store_categories(df, column_list, output_directory, df_type="nodes"):
+    fu.create_folder(output_directory)
+
+    for column in column_list:
+        categories = df[str(column)].astype('category')
+        categories_dict = dict(enumerate(categories.cat.categories))
+
+        categories_df = pd.DataFrame(categories_dict, index=[0]).T
+        categories_df.reset_index(inplace=True)
+        categories_df.columns = ["category", "value"]
+        categories_df = categories_df.reindex(columns=["value", "category"])
+        categories_df.to_csv(os.path.join(output_directory, f"{column}_{df_type}.csv"), index=None)
+
+
+def generate_categories(source_directory, output_directory):
+    edges_df = pd.DataFrame()
+    nodes_df = pd.DataFrame()
+
+    # FIXME duplicate code mmmm
+    filenames = sorted(os.listdir(source_directory))
+    filename_pairs = [filenames[i:i + 2] for i in range(0, len(filenames), 2)]
+
+    for edges, nodes in filename_pairs:
+        if nodes[0:3] != edges[0:3]:
+            raise f"PDB names for (nodes, edges) pair do not match: {nodes}, {edges}"
+
+        edges_df = edges_df.append(pd.read_csv(os.path.join(source_directory, edges), index_col=0))
+        nodes_df = nodes_df.append(pd.read_csv(os.path.join(source_directory, nodes), index_col=0))
+
+    nodes_categories = ['residue_name']
+    edges_categories = ['kind']
+    if graph_type == "atom":
+        nodes_categories.extend(['atom_type', 'element_symbol'])
+    store_categories(nodes_df, nodes_categories, output_directory, df_type="nodes")
+
+    edges_df['kind'] = edges_df['kind'].astype(str).replace(["{", "}"], "")  # FIXME it's not removing (ružno)
+
+    store_categories(edges_df, edges_categories, output_directory, df_type="edges")
 
 
 def load_graphs(source_directory):
@@ -146,6 +186,9 @@ def load_graphs(source_directory):
 
         edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)
         nodes_df = pd.read_csv(os.path.join(source_directory, nodes), index_col=0)
+
+        nodes_df = replace_categories(nodes_df, categories_dir, "nodes")
+        edges_df = replace_categories(edges_df, categories_dir, "edges")
 
         graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
 

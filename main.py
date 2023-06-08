@@ -26,6 +26,7 @@ pdb_demo_dir = config['pdb_demo_dir']
 
 graph_dir = config['graph_dir']
 graph_demo_dir = config['graph_demo_dir']
+categories_dir = config['categories_dir']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
 # generation
@@ -57,11 +58,7 @@ if __name__ == "__main__":
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
 
-        # TODO categories
-        # load all dfs' unique values for defined columns to one df
-        # enumerate (categorise) data from that df
-        # sveta petko moli za nas
-        # replace category name with category index, as when using foreign key
+        gu.generate_categories(graph_dir, categories_dir)
 
     graphs = gu.load_graphs(graph_dir)
 
