@@ -202,7 +202,15 @@ def load_graphs(source_directory):
 
 def load_graph_labels(filename="targets.txt"):
     with open(os.path.join(targets_dir, filename), "r") as f:
-        return pd.DataFrame([[entry for entry in line.split()] for line in f])
+        df = pd.DataFrame([[entry for entry in line.split()] for line in f])
+        df.columns = ["index", "label"]
+
+        df = df.set_index(df.columns[0])
+        df["label"] = df["label"].astype("category")
+
+        # ?????
+        df = df.squeeze()
+        return df
 
 
 def visualise_graph(graph):

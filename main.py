@@ -1,5 +1,7 @@
+from stellargraph.datasets import datasets
 from stellargraph.mapper import PaddedGraphGenerator
 
+from model.train import train_model
 from util import file_utils as fu, graph_utils as gu
 from model import model as md
 
@@ -56,22 +58,28 @@ if __name__ == "__main__":
 
         gu.generate_categories(graph_dir, categories_dir)
 
+    # Adapt graphs to Keras model
     graphs = gu.load_graphs(graph_dir)
 
+    # NJIHOVO
+    dataset = datasets.MUTAG()
+    jercina, graph_labels = dataset.load()
+    print(f"jerčina:\n{jercina}")
+    print(jercina[0].node_features())
+    print(jercina[0].nodes())
+    print(f"Njihov graph labels:\n{graph_labels}")
+    print(type(graph_labels))
+
+    # TODO what connects pdb/graph name to target??
     graph_labels = gu.load_graph_labels()
     gu.graphs_summary(graphs, graph_labels)
-    graph_labels.value_counts().to_frame()
-    graph_labels = pd.get_dummies(graph_labels, drop_first=True)
 
-    # Adapt graphs to Keras model
+    # TODO graph labels should be targets
+    print(graph_labels)
+    print(type(graph_labels))
+
     graph_generator = PaddedGraphGenerator(graphs=graphs)
     logging.info("Graphs adapted for model")
 
-    # Create classification models
-    model_gcn = md.create_graph_classification_model_gcn(graph_generator)
-    logging.info("Created GCN model")
-    print(model_gcn.summary())
-
-    model_dcgnn = md.create_graph_classification_model_dcgnn(graph_generator)
-    logging.info("Created DCGNN model")
-    print(model_dcgnn.summary())
+    # Create and train classification models
+    train_model(graph_generator, graph_labels)
