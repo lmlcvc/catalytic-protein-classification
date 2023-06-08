@@ -1,7 +1,4 @@
-import networkx as nx
 from stellargraph.mapper import PaddedGraphGenerator
-from tensorboard.notebook import display
-import tensorflow as tf
 
 from util import file_utils as fu, graph_utils as gu
 from model import model as md
@@ -25,7 +22,6 @@ pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 pdb_demo_dir = config['pdb_demo_dir']
 
 graph_dir = config['graph_dir']
-graph_demo_dir = config['graph_demo_dir']
 categories_dir = config['categories_dir']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
@@ -46,15 +42,15 @@ if __name__ == "__main__":
     fu.create_folder(graph_dir)
     if not os.listdir(graph_dir):
         if demo_run == "Y" or demo_run == "y":
-            [gu.generate_graph_direct(pdb_demo_dir, entry.replace(".pdb", "")) for entry in os.listdir(pdb_demo_dir)]
+            [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", "")) for entry in os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
 
         else:
-            [gu.generate_graph_direct(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
+            [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", "")) for entry in
              os.listdir(pdb_catalytic_dir)]
             logging.info("Generated catalytic graphs")
 
-            [gu.generate_graph_direct(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
+            [gu.generate_graph(pdb_non_catalytic_dir, entry.replace(".pdb", "")) for entry in
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
 

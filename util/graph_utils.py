@@ -79,7 +79,7 @@ def replace_categories(df, source_dir, df_type):
         columns = ["residue_name"]
         if graph_type == "atom":
             columns.extend(["atom_type", "element_symbol"])
-    elif df_type == "edges":  # TODO maybe encode source and target as well
+    elif df_type == "edges":  # TODO maybe encode source and target as well (preferably same as nodes encoding)
         columns = ["kind"]
     else:
         raise f"Wrong df type: {df_type}"
@@ -118,7 +118,14 @@ def prepare_nodes(nodes):
     return nodes
 
 
-def generate_graph_direct(source_directory, entry):  # TODO rename
+def prepare_edges(edges):
+    edges['kind'] = edges['kind'].astype(str)
+    edges['kind'] = edges['kind'].str.translate({ord('{'): None, ord('}'): None, ord("'"): None})
+
+    return edges
+
+
+def generate_graph(source_directory, entry):
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
     graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
 
@@ -129,6 +136,7 @@ def generate_graph_direct(source_directory, entry):  # TODO rename
     edges = nx.to_pandas_edgelist(graph)
 
     nodes = prepare_nodes(nodes)
+    edges = prepare_edges(edges)
 
     nodes.to_csv(os.path.join(graph_dir, f"{entry}_nodes.csv"))
     edges.to_csv(os.path.join(graph_dir, f"{entry}_edges.csv"))
@@ -152,7 +160,6 @@ def generate_categories(source_directory, output_directory):
     edges_df = pd.DataFrame()
     nodes_df = pd.DataFrame()
 
-    # FIXME duplicate code mmmm
     filenames = sorted(os.listdir(source_directory))
     filename_pairs = [filenames[i:i + 2] for i in range(0, len(filenames), 2)]
 
@@ -168,8 +175,6 @@ def generate_categories(source_directory, output_directory):
     if graph_type == "atom":
         nodes_categories.extend(['atom_type', 'element_symbol'])
     store_categories(nodes_df, nodes_categories, output_directory, df_type="nodes")
-
-    edges_df['kind'] = edges_df['kind'].astype(str).replace(["{", "}"], "")  # FIXME it's not removing (ružno)
 
     store_categories(edges_df, edges_categories, output_directory, df_type="edges")
 
