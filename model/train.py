@@ -45,6 +45,7 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
 
 
 def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
+    # TODO write as separate functions
     """
     :param epochs: maximum number of training epochs
     :param folds: the number of folds for k-fold cross validation
@@ -80,3 +81,4 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
     plt.hist(test_accs)
     plt.xlabel("Accuracy")
     plt.ylabel("Count")
+    plt.show

@@ -3,11 +3,9 @@ from stellargraph.mapper import PaddedGraphGenerator
 
 from model.train import train_model
 from util import file_utils as fu, graph_utils as gu
-from model import model as md
 
 import os
 import configparser
-import pandas as pd
 import logging
 import warnings
 
@@ -36,7 +34,7 @@ if __name__ == "__main__":
 
     # check if files have been transformed
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
-        fu.generate_targets()
+        fu.generate_targets(pdb_demo_dir)
         logging.info("Finished target generation")
 
     # graph generation
@@ -61,25 +59,12 @@ if __name__ == "__main__":
     # Adapt graphs to Keras model
     graphs = gu.load_graphs(graph_dir)
 
-    # NJIHOVO
-    dataset = datasets.MUTAG()
-    jercina, graph_labels = dataset.load()
-    print(f"jerčina:\n{jercina}")
-    print(jercina[0].node_features())
-    print(jercina[0].nodes())
-    print(f"Njihov graph labels:\n{graph_labels}")
-    print(type(graph_labels))
-
-    # TODO what connects pdb/graph name to target??
+    # TODO what connects pdb/graph name to target? (probably order of occurence)
     graph_labels = gu.load_graph_labels()
     gu.graphs_summary(graphs, graph_labels)
-
-    # TODO graph labels should be targets
-    print(graph_labels)
-    print(type(graph_labels))
 
     graph_generator = PaddedGraphGenerator(graphs=graphs)
     logging.info("Graphs adapted for model")
 
     # Create and train classification models
-    train_model(graph_generator, graph_labels)
+    train_model(graph_generator, graph_labels, epochs=20, folds=3, n_repeats=1)

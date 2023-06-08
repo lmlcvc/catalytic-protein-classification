@@ -40,6 +40,8 @@ elif graph_type == "atom":
 
 graphein_config.dict()
 
+# TODO organise code
+
 
 def get_distance_matrix(coords):
     diff_tensor = np.expand_dims(coords, axis=1) - np.expand_dims(coords, axis=0)
@@ -164,7 +166,7 @@ def generate_categories(source_directory, output_directory):
     filename_pairs = [filenames[i:i + 2] for i in range(0, len(filenames), 2)]
 
     for edges, nodes in filename_pairs:
-        if nodes[0:3] != edges[0:3]:
+        if nodes[0:4] != edges[0:4]:
             raise f"PDB names for (nodes, edges) pair do not match: {nodes}, {edges}"
 
         edges_df = edges_df.append(pd.read_csv(os.path.join(source_directory, edges), index_col=0))
@@ -206,7 +208,7 @@ def load_graph_labels(filename="targets.txt"):
         df.columns = ["index", "label"]
 
         df = df.set_index(df.columns[0])
-        df["label"] = df["label"].astype("category")
+        df["label"] = df["label"].astype(float)  # .astype("category")
 
         # ?????
         df = df.squeeze()

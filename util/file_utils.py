@@ -67,7 +67,7 @@ def check_filecount():
           f"total = {missing_catalytic + missing_non_catalytic}")
 
 
-def generate_targets():
+def generate_targets(pdb_source_directory):
     """
     Generate files with binary target values for each protein entry name
         0 - non-catalytic
@@ -88,6 +88,9 @@ def generate_targets():
                 else:
                     warnings.warn(f"Unexpected table name: {table}")
 
+    pdb_target_list = [pdb.replace(".pdb", "") for pdb in os.listdir(pdb_source_directory)]
+    lines_filtered = [line for line in lines if line[0:4] in pdb_target_list]
+
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
-    targets_file.write("\n".join(line for line in lines))
+    targets_file.write("\n".join(line for line in lines_filtered))
