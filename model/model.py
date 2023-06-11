@@ -1,3 +1,4 @@
+from sklearn import model_selection
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
 

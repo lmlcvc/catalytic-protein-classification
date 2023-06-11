@@ -127,7 +127,7 @@ def prepare_edges(edges):
     return edges
 
 
-def generate_graph(source_directory, entry):
+def generate_graph(source_directory, entry, output_directory):
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
     graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
 
@@ -140,8 +140,8 @@ def generate_graph(source_directory, entry):
     nodes = prepare_nodes(nodes)
     edges = prepare_edges(edges)
 
-    nodes.to_csv(os.path.join(graph_dir, f"{entry}_nodes.csv"))
-    edges.to_csv(os.path.join(graph_dir, f"{entry}_edges.csv"))
+    nodes.to_csv(os.path.join(output_directory, f"{entry}_nodes.csv"))
+    edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
 
 
 def store_categories(df, column_list, output_directory, df_type="nodes"):
