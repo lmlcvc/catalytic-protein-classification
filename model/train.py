@@ -39,7 +39,7 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
     return train_gen, test_gen
 
 
-def train_model(graph_generator, eval_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
+def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
     test_accs = []
 
     stratified_folds = model_selection.RepeatedStratifiedKFold(
@@ -64,12 +64,10 @@ def train_model(graph_generator, eval_generator, graph_labels, epochs=200, folds
         f"Accuracy over all folds mean: {np.mean(test_accs) * 100:.3}% and std: {np.std(test_accs) * 100:.2}%"
     )
 
-    # Make predictions on the evaluation data
-    eval_predictions = model.predict(eval_generator)
-    print(f"Evaluation predictions: {eval_predictions}")
-
     plt.figure(figsize=(8, 6))
     plt.hist(test_accs)
     plt.xlabel("Accuracy")
     plt.ylabel("Count")
     plt.show()
+
+    return model
