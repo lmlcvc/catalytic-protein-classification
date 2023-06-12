@@ -1,5 +1,6 @@
-from sklearn import model_selection
-from stellargraph.datasets import datasets
+import numpy as np
+import tensorflow as tf
+from stellargraph.layer import GraphConvolution
 from stellargraph.mapper import PaddedGraphGenerator
 
 from model.model import create_graph_classification_model_gcn
@@ -88,3 +89,20 @@ if __name__ == "__main__":
         # Save the model
         model.save(os.path.join(model_dir, "gcn_model.h5"))
         print("GCN model trained and saved successfully.")
+    else:
+        with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
+            model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
+
+    # Prepare your input graph data for inference
+    inference_tensors = graph_generator.flow(inference_graphs)
+
+    # Make predictions using the loaded model
+    predictions = model.predict(inference_tensors)
+
+    # Convert the predictions to binary class labels (0 or 1)
+    binary_predictions = np.round(predictions).astype(int)
+
+    # Print the predictions
+    for i, graph in enumerate(inference_graphs):
+        prediction = binary_predictions[i][0]
+        print(f"Graph {i + 1}: Predicted class - {prediction}")

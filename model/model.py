@@ -1,3 +1,7 @@
+from keras import Model
+from keras.layers import Dense
+from keras.losses import binary_crossentropy
+from keras.optimizers import Adam
 from sklearn import model_selection
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
@@ -13,19 +17,13 @@ def create_graph_classification_model_gcn(generator):
         dropout=0.5,
     )
     x_inp, x_out = gc_model.in_out_tensors()
+    predictions = Dense(units=32, activation="relu")(x_out)
+    predictions = Dense(units=16, activation="relu")(predictions)
+    predictions = Dense(units=1, activation="sigmoid")(predictions)
 
-    # Add dense layers for classification
-    predictions = tf.keras.layers.Dense(units=32, activation="relu")(x_inp)
-    predictions = tf.keras.layers.Dense(units=16, activation="relu")(predictions)
-    predictions = tf.keras.layers.Dense(units=1, activation="sigmoid")(predictions)
-
-    # Create the Keras model and prepare it for training
-    model = tf.keras.Model(inputs=x_inp, outputs=predictions)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(0.005),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=["acc"]
-    )
+    # Let's create the Keras model and prepare it for training
+    model = Model(inputs=x_inp, outputs=predictions)
+    model.compile(optimizer=Adam(0.005), loss=binary_crossentropy, metrics=["acc"])
 
     return model
 
