@@ -89,7 +89,11 @@ def generate_targets(pdb_source_directory):
                     warnings.warn(f"Unexpected table name: {table}")
 
     pdb_target_list = [pdb.replace(".pdb", "") for pdb in os.listdir(pdb_source_directory)]
-    lines_filtered = [line for line in lines if line[0:4] in pdb_target_list]
+
+    lines_filtered = []
+    for line in lines:
+        if line[0:4] in pdb_target_list and line not in lines_filtered:
+            lines_filtered.append(line)
 
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
