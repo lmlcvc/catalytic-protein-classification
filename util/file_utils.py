@@ -67,7 +67,44 @@ def check_filecount():
           f"total = {missing_catalytic + missing_non_catalytic}")
 
 
-def generate_targets(pdb_source_directory):
+def generate_targets(pdb_source_directories):
+    """
+    Generate files with binary target values for each protein entry name
+        0 - non-catalytic
+        1 - catalytic
+    """
+    lines = []
+
+    for table in os.listdir(tables_dir):
+        df = pd.read_excel(os.path.join(tables_dir, table))
+
+        for pdbs in df['PDB'].tolist():
+            pdb_list = [pdb for pdb in pdbs.split(";") if pdb != ""]
+            for pdb in pdb_list:
+                if 'non-catalytic' in table:
+                    lines.append(f"{pdb} 0")
+                elif 'catalytic' in table:
+                    lines.append(f"{pdb} 1")
+                else:
+                    warnings.warn(f"Unexpected table name: {table}")
+
+    pdb_target_list = []
+    for pdb_source_directory in pdb_source_directories:
+        for pdb in os.listdir(pdb_source_directory):
+            pdb_target_list.append(pdb.replace(".pdb", ""))
+    pdb_target_list.sort()
+
+    lines_filtered = []
+    for line in lines:
+        if line[0:4] in pdb_target_list and line not in lines_filtered:
+            lines_filtered.append(line)
+
+    create_folder(targets_dir)
+    targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
+    targets_file.write("\n".join(line for line in lines_filtered))
+
+
+def generate_ground_truth(pdb_source_directory):
     """
     Generate files with binary target values for each protein entry name
         0 - non-catalytic
@@ -96,5 +133,5 @@ def generate_targets(pdb_source_directory):
             lines_filtered.append(line)
 
     create_folder(targets_dir)
-    targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
+    targets_file = open(os.path.join(targets_dir, "inference_truth.txt"), "w")
     targets_file.write("\n".join(line for line in lines_filtered))

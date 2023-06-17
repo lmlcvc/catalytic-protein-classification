@@ -26,6 +26,7 @@ pdb_inference_dir = config['pdb_inference_dir']
 pdb_demo_dir = config['pdb_demo_dir']
 
 graph_dir = config['graph_dir']
+demo_graph_dir = config['demo_graph_dir']
 inference_dir = config['inference_dir']
 model_dir = config['model_dir']
 categories_dir = config['categories_dir']
@@ -40,20 +41,30 @@ if __name__ == "__main__":
 
     # check if files have been transformed
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
-        fu.generate_targets(pdb_demo_dir)
+        if demo_run == "Y" or demo_run == "y":
+            fu.generate_targets(pdb_demo_dir)
+        else:
+            fu.generate_targets([pdb_catalytic_dir, pdb_non_catalytic_dir])
         logging.info("Finished target generation")
+
+    # Human-readable ground truth files
+    fu.generate_ground_truth(pdb_inference_dir)
 
     # graph generation
     graphs = []
     fu.create_folder(graph_dir)
     fu.create_folder(inference_dir)
-    if not os.listdir(graph_dir):
-        if demo_run == "Y" or demo_run == "y":
-            [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), graph_dir) for entry in
+
+    if demo_run == "Y" or demo_run == "y":
+        if not os.listdir(demo_graph_dir):
+            [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
              os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
 
-        else:
+        gu.generate_categories(demo_graph_dir, categories_dir)
+        logging.info("Generated demo categories graphs")
+    else:
+        if not os.listdir(graph_dir):
             [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
              os.listdir(pdb_catalytic_dir)]
             logging.info("Generated catalytic graphs")
@@ -62,12 +73,13 @@ if __name__ == "__main__":
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
 
-        [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
-         os.listdir(pdb_inference_dir)]
-        logging.info("Generated inferenceuation graphs")
-
         gu.generate_categories(graph_dir, categories_dir)
         logging.info("Generated categories graphs")
+
+    if not os.listdir(inference_dir):
+        [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
+         os.listdir(pdb_inference_dir)]
+        logging.info("Generated inference graphs")
 
     # Adapt graphs to Keras model
     graphs = gu.load_graphs(graph_dir)
@@ -83,7 +95,7 @@ if __name__ == "__main__":
     fu.create_folder(model_dir)
     if "gcn_model.h5" not in os.listdir(model_dir):
         # Create and train classification models
-        model = train_model(graph_generator, graph_labels, epochs=1, folds=2, n_repeats=1)
+        model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
         print(model.summary())
 
         # Save the model
