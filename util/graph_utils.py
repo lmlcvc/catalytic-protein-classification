@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 from biopandas.pdb import PandasPdb
 from stellargraph import StellarGraph
+import logging
 
 from graphein.protein.config import ProteinGraphConfig
 from graphein.protein.edges.atomic import add_atomic_edges
@@ -129,7 +130,12 @@ def prepare_edges(edges):
 
 def generate_graph(source_directory, entry, output_directory):
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
-    graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+
+    try:
+        graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+    except:
+        logging.error(f"PDB file {entry} failed to transform to graph")
+        return
 
     atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
     # adjacency_matrix = nx.to_pandas_adjacency(graph)
