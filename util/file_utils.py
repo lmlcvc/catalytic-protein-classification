@@ -92,7 +92,7 @@ def generate_targets(pdb_source_directories):
     for pdb_source_directory in pdb_source_directories:
         for pdb in os.listdir(pdb_source_directory):
             pdb_target_list.append(pdb.replace(".pdb", ""))
-    pdb_target_list.sort()
+    pdb_target_list.sort(key=str.lower)
 
     lines_filtered = []
     for line in lines:
@@ -126,6 +126,7 @@ def generate_ground_truth(pdb_source_directory):
                     warnings.warn(f"Unexpected table name: {table}")
 
     pdb_target_list = [pdb.replace(".pdb", "") for pdb in os.listdir(pdb_source_directory)]
+    pdb_target_list.sort(key=str.lower)
 
     lines_filtered = []
     for line in lines:
