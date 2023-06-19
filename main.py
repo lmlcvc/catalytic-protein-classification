@@ -42,7 +42,7 @@ if __name__ == "__main__":
     # check if files have been transformed
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
         if demo_run == "Y" or demo_run == "y":
-            fu.generate_targets(pdb_demo_dir)
+            fu.generate_targets([pdb_demo_dir])
         else:
             fu.generate_targets([pdb_catalytic_dir, pdb_non_catalytic_dir])
         logging.info("Finished target generation")
