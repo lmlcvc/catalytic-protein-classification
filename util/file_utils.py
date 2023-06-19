@@ -96,7 +96,7 @@ def generate_targets(pdb_source_directories):
 
     lines_filtered = []
     for line in lines:
-        if line[0:4] in pdb_target_list and line not in lines_filtered:
+        if line[0:4] in pdb_target_list and line[0:4] not in lines_filtered:
             lines_filtered.append(line)
 
     create_folder(targets_dir)
@@ -130,7 +130,7 @@ def generate_ground_truth(pdb_source_directory):
 
     lines_filtered = []
     for line in lines:
-        if line[0:4] in pdb_target_list and line not in lines_filtered:
+        if line[0:4] in pdb_target_list and line[0:4] not in lines_filtered:
             lines_filtered.append(line)
 
     create_folder(targets_dir)
