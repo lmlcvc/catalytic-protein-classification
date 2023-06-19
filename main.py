@@ -82,7 +82,10 @@ if __name__ == "__main__":
         logging.info("Generated inference graphs")
 
     # Adapt graphs to Keras model
-    graphs = gu.load_graphs(graph_dir)
+    if demo_run == "Y" or demo_run =="y":
+        graphs = gu.load_graphs(demo_graph_dir)
+    else:
+        graphs = gu.load_graphs(graph_dir)
     inference_graphs = gu.load_graphs(inference_dir)
 
     # TODO what connects pdb/graph name to target? (probably order of occurence)
