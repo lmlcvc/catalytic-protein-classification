@@ -37,8 +37,6 @@ def check_setup(check_setup):
 
 def run_full_setup_check():
     check_filecount()
-    list_non_duplicates()
-    pick_best()
     # will add function calls when implemented
 
 
@@ -162,7 +160,10 @@ def generate_targets(pdb_source_directories):
     pdb_target_list = []
     for pdb_source_directory in pdb_source_directories:
         for pdb in os.listdir(pdb_source_directory):
-            pdb_target_list.append(pdb.replace(".pdb", ""))
+            with open(os.path.join(file_list_dir, "non_duplicate_list.txt")) as f:
+                entries = f.read().split('\n')
+                if pdb.replace(".pdb", "") in entries:
+                    pdb_target_list.append(pdb.replace(".pdb", ""))
     pdb_target_list.sort(key=str.lower)
 
     lines_filtered = []

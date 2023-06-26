@@ -3,7 +3,6 @@ import tensorflow as tf
 from stellargraph.layer import GraphConvolution
 from stellargraph.mapper import PaddedGraphGenerator
 
-from model.model import create_graph_classification_model_gcn
 from model.train import train_model
 from util import file_utils as fu, graph_utils as gu
 
@@ -17,6 +16,7 @@ config.read('config.ini')
 config = config['default']
 
 check_setup = config['check_setup']
+one_per_entry = config['one_per_entry']
 demo_run = config['demo_run']
 
 targets_dir = config['targets_dir']
@@ -38,6 +38,12 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 if __name__ == "__main__":
     # run setup check
     fu.check_setup(check_setup)
+
+    # drop duplicate pdbs
+    fu.list_non_duplicates()
+
+    if one_per_entry.lower() == "y":
+        fu.pick_best()
 
     # check if files have been transformed
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
@@ -82,7 +88,7 @@ if __name__ == "__main__":
         logging.info("Generated inference graphs")
 
     # Adapt graphs to Keras model
-    if demo_run == "Y" or demo_run =="y":
+    if demo_run == "Y" or demo_run == "y":
         graphs = gu.load_graphs(demo_graph_dir)
     else:
         graphs = gu.load_graphs(graph_dir)

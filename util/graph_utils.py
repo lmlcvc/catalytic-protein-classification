@@ -28,6 +28,7 @@ graph_type = config['graph_type']
 targets_dir = config['targets_dir']
 graph_dir = config['graph_dir']
 categories_dir = config['categories_dir']
+file_list_dir = config['file_list_dir']
 
 # graphein config
 graphein_config = None
@@ -129,6 +130,11 @@ def prepare_edges(edges):
 
 
 def generate_graph(source_directory, entry, output_directory):
+    with open(os.path.join(file_list_dir, "non_duplicate_list.txt")) as f:
+        entries = f.read().split('\n')
+        if entry not in entries:
+            return
+
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
 
     try:
