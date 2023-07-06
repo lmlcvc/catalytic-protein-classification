@@ -18,11 +18,11 @@ def train_fold(model, train_gen, test_gen, es, epochs):
     print(f"train gen: {train_gen}")
     print(f"validation data (test gen):{test_gen}")
     history = model.fit(
-        train_gen, epochs=epochs, validation_data=test_gen, verbose=2, callbacks=[es],
+        train_gen, epochs=epochs, validation_data=test_gen, verbose=1, callbacks=[es],
     )
 
     # calculate performance on the test data and return along with history
-    test_metrics = model.evaluate(test_gen, verbose=2)
+    test_metrics = model.evaluate(test_gen, verbose=1)
     test_acc = test_metrics[model.metrics_names.index("acc")]
 
     return history, test_acc
