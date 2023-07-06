@@ -164,12 +164,12 @@ def generate_targets(pdb_source_directories):
                 entries = f.read().split('\n')
                 if pdb.replace(".pdb", "") in entries:
                     pdb_target_list.append(pdb.replace(".pdb", ""))
-    pdb_target_list.sort(key=str.lower)
 
     lines_filtered = []
     for line in lines:
         if line[0:4] in pdb_target_list and line not in lines_filtered:
             lines_filtered.append(line)
+    lines_filtered.sort(key=str.lower)
 
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
@@ -198,12 +198,12 @@ def generate_ground_truth(pdb_source_directory):
                     warnings.warn(f"Unexpected table name: {table}")
 
     pdb_target_list = [pdb.replace(".pdb", "") for pdb in os.listdir(pdb_source_directory)]
-    pdb_target_list.sort(key=str.lower)
 
     lines_filtered = []
     for line in lines:
         if line[0:4] in pdb_target_list and line not in lines_filtered:
             lines_filtered.append(line)
+    lines_filtered.sort(key=str.lower)
 
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "inference_truth.txt"), "w")
