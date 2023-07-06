@@ -37,6 +37,7 @@ def check_setup(check_setup):
 
 def run_full_setup_check():
     check_filecount()
+    list_non_duplicates()
     # will add function calls when implemented
 
 

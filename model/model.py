@@ -5,6 +5,9 @@ from keras.optimizers import Adam
 from sklearn import model_selection
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 
 import tensorflow as tf
 
@@ -16,6 +19,8 @@ def create_graph_classification_model_gcn(generator):
         generator=generator,
         dropout=0.5,
     )
+
+    # TODO: Napravit se bezobrazan i napisati svoju in_out_tensors()
     x_inp, x_out = gc_model.in_out_tensors()
     predictions = Dense(units=32, activation="relu")(x_out)
     predictions = Dense(units=16, activation="relu")(predictions)
@@ -60,3 +65,21 @@ def create_graph_classification_model_dcgnn(generator):
                   metrics=["acc"])
 
     return model
+
+
+# Create a function to get the gradients of the output predictions with respect to the input graph nodes
+@tf.function
+def get_gradients(model, inputs):
+    inputs = tf.cast(inputs, tf.float32)  # Cast the inputs to float32
+    with tf.GradientTape() as tape:
+        tape.watch(inputs)
+        predictions = model(inputs)
+    gradients = tape.gradient(predictions, inputs)
+    return gradients
+
+
+def visualize_grad_cam(heatmap, filename):
+    plt.imshow(heatmap, cmap='hot', interpolation='nearest')
+    plt.axis('off')
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close()
