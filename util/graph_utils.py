@@ -209,7 +209,7 @@ def load_graphs(source_directory):
         nodes_df = replace_categories(nodes_df, categories_dir, "nodes")
         edges_df = replace_categories(edges_df, categories_dir, "edges")
 
-        graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
+        graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df, edge_weight_column='distance'))
 
     return graphs
 
