@@ -108,11 +108,12 @@ if __name__ == "__main__":
 
     fu.create_folder(model_dir)
 
+    # TODO: Add training parameters to config.ini
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
             model = create_graph_classification_model_dcgnn(graph_generator)
             # Create and train classification models
-            model = train_model(model, graph_generator, graph_labels, epochs=50, folds=5, n_repeats=1)
+            model = train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -126,7 +127,7 @@ if __name__ == "__main__":
         if "gcn_model.h5" not in os.listdir(model_dir):
             model = create_graph_classification_model_gcn(graph_generator)
             # Create and train classification models
-            model = train_model(model, graph_generator, graph_labels, epochs=50, folds=5, n_repeats=1)
+            model = train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
