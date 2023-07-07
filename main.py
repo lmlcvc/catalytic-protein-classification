@@ -1,12 +1,13 @@
 import numpy as np
 import tensorflow as tf
-from stellargraph.layer import GraphConvolution
+from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
 from model.train import train_model
-from model.model import get_gradients, visualize_grad_cam
+from model.model import get_gradients, in_out_tensors, create_graph_classification_model_gcn, create_graph_classification_model_dcgnn
 from util import file_utils as fu, graph_utils as gu
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 import os
 import configparser
@@ -20,6 +21,7 @@ config = config['default']
 check_setup = config['check_setup']
 one_per_entry = config['one_per_entry']
 demo_run = config['demo_run']
+use_dgcnn = config['use_dgcnn']
 
 targets_dir = config['targets_dir']
 pdb_catalytic_dir = config['pdb_catalytic_dir']
@@ -100,23 +102,40 @@ if __name__ == "__main__":
     # TODO what connects pdb/graph name to target? (probably order of occurence)
     graph_labels = gu.load_graph_labels()
     gu.graphs_summary(graphs, graph_labels)
+    print(graphs[0].info())
 
     graph_generator = PaddedGraphGenerator(graphs=graphs)
 
-    # TODO modularnije za kad bude više modela (haha)
     fu.create_folder(model_dir)
-    if "gcn_model.h5" not in os.listdir(model_dir):
-        # Create and train classification models
-        model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
-        print(model.summary())
 
-        # Save the model
-        model.save(os.path.join(model_dir, "gcn_model.h5"))
-        print("GCN model trained and saved successfully.")
-    else:
-        with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
-            model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
+    if use_dgcnn.lower() == "y":
+        if "dgcnn_model.h5" not in os.listdir(model_dir):
+            model = create_graph_classification_model_dcgnn(graph_generator)
+            # Create and train classification models
+            model = train_model(model, graph_generator, graph_labels, epochs=50, folds=5, n_repeats=1)
             print(model.summary())
+
+            # Save the model
+            model.save(os.path.join(model_dir, "dgcnn_model.h5"))
+            print("GCN model trained and saved successfully.")
+        else:
+            with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
+                model = tf.keras.models.load_model(os.path.join(model_dir, "dgcnn_model.h5"))
+                print(model.summary())
+    else:
+        if "gcn_model.h5" not in os.listdir(model_dir):
+            model = create_graph_classification_model_gcn(graph_generator)
+            # Create and train classification models
+            model = train_model(model, graph_generator, graph_labels, epochs=50, folds=5, n_repeats=1)
+            print(model.summary())
+
+            # Save the model
+            model.save(os.path.join(model_dir, "gcn_model.h5"))
+            print("GCN model trained and saved successfully.")
+        else:
+            with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
+                model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
+                print(model.summary())
 
     inference_labels = gu.load_graph_labels("inference_truth.txt")
     # Prepare input graph data for inference
@@ -130,6 +149,9 @@ if __name__ == "__main__":
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
 
+    x_t, mask, A_m = in_out_tensors(inference_generator, model)[0]
+    inputs = [x_t, mask, A_m]
+
     # Compute and visualize Grad-CAM heatmaps for each sample in the inference dataset
     run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
@@ -137,7 +159,8 @@ if __name__ == "__main__":
 
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
-        print(f"Graph {i + 1}: Predicted class - {prediction}")
+        print(f"Graph {i + 1} - {graph_labels.index[i]}:\n"
+              f"Predicted class - {prediction}\n\t True class - {round(graph_labels[i])}")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]
@@ -145,16 +168,29 @@ if __name__ == "__main__":
             print(f"Skipping graph {i + 1} due to None input.")
             continue
 
-        # Compute the gradients for the selected sample
         gradients = get_gradients(model, inputs)
-        print(gradients)
 
-        # Calculate importance weights by averaging gradients across channels
-        importance_weights = np.mean(gradients, axis=-1)  # Assuming the last axis represents the channels
+        # Saliency map
+        saliency_map = np.abs(gradients[0].numpy())
+        saliency_map /= np.max(saliency_map)
+        saliency_map = np.transpose(saliency_map)  # Transpose the saliency map
 
-        # Normalize importance weights to [0, 1] range
-        importance_weights = (importance_weights - np.min(importance_weights)) / (
-                    np.max(importance_weights) - np.min(importance_weights))
+        # Feature importance ranking
+        feature_importance = np.mean(np.abs(gradients[0].numpy()), axis=0)
+        feature_ranking = np.argsort(feature_importance)[::-1]
 
-        # Visualize the Grad-CAM heatmap
-        visualize_grad_cam(importance_weights, os.path.join(run_dir, f"gradcam_{i + 1}.png"))
+        # Print feature importance ranking
+        for rank, feature_index in enumerate(feature_ranking):
+            print(f"Rank {rank + 1}: Feature {feature_index}")
+
+        # Visualize the saliency map and save it as an image
+        plt.figure(figsize=(8, 8), dpi=300)
+        plt.imshow(saliency_map, cmap='hot', interpolation='nearest', aspect='auto')
+        plt.axis('off')
+        cbar = plt.colorbar()
+        cbar.ax.set_ylabel('Saliency')
+        plt.xlabel('Node Index')
+        plt.ylabel('Feature Index')
+        plt.tight_layout()
+        plt.savefig(os.path.join(run_dir, f"saliency_map-{i}.png"), bbox_inches='tight')
+        plt.close()

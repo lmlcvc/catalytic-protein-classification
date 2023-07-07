@@ -1,4 +1,4 @@
-from keras import Model
+from keras import Model, Input
 from keras.layers import Dense
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
@@ -12,6 +12,25 @@ import os
 import tensorflow as tf
 
 
+def in_out_tensors(generator, model):
+    """
+    Builds a Graph Classification model.
+
+    Returns:
+        tuple: ``(x_inp, x_out)``, where ``x_inp`` is a list of two input tensors for the
+            Graph Classification model (containing node features and normalized adjacency matrix),
+            and ``x_out`` is a tensor for the Graph Classification model output.
+    """
+    x_t = Input(shape=(None, generator.node_features_size))
+    mask = Input(shape=(None,), dtype=tf.bool)
+    A_m = Input(shape=(None, None))
+
+    x_inp = [x_t, mask, A_m]
+    x_out = model(x_inp)
+
+    return x_inp, x_out
+
+
 def create_graph_classification_model_gcn(generator):
     gc_model = GCNSupervisedGraphClassification(
         layer_sizes=[64, 64],
@@ -19,9 +38,7 @@ def create_graph_classification_model_gcn(generator):
         generator=generator,
         dropout=0.5,
     )
-
-    # TODO: Napravit se bezobrazan i napisati svoju in_out_tensors()
-    x_inp, x_out = gc_model.in_out_tensors()
+    x_inp, x_out = in_out_tensors(generator, gc_model)
     predictions = Dense(units=32, activation="relu")(x_out)
     predictions = Dense(units=16, activation="relu")(predictions)
     predictions = Dense(units=1, activation="sigmoid")(predictions)
@@ -44,7 +61,7 @@ def create_graph_classification_model_dcgnn(generator):
         bias=False,
         generator=generator,
     )
-    x_inp, x_out = dgcnn_model.in_out_tensors()
+    x_inp, x_out = in_out_tensors(generator, dgcnn_model)
 
     x_out = tf.keras.layers.Conv1D(filters=16, kernel_size=sum(layer_sizes), strides=sum(layer_sizes))(x_out)
     x_out = tf.keras.layers.MaxPool1D(pool_size=2)(x_out)
@@ -70,16 +87,36 @@ def create_graph_classification_model_dcgnn(generator):
 # Create a function to get the gradients of the output predictions with respect to the input graph nodes
 @tf.function
 def get_gradients(model, inputs):
-    inputs = tf.cast(inputs, tf.float32)  # Cast the inputs to float32
+    x_t, mask, A_m = inputs  # Unpack the input tensors
+
+    mask_float = tf.where(mask, tf.ones_like(mask, dtype=tf.float32),
+                          tf.zeros_like(mask, dtype=tf.float32))
+
+    inputs_adapted = [x_t, mask_float, A_m]
+
     with tf.GradientTape() as tape:
-        tape.watch(inputs)
+        tape.watch(inputs[0])
         predictions = model(inputs)
-    gradients = tape.gradient(predictions, inputs)
+
+    # gradients = tape.gradient(predictions, inputs_adapted)
+    gradients = tape.gradient(predictions, inputs[0])
+
     return gradients
 
 
-def visualize_grad_cam(heatmap, filename):
+def visualize_grad_cam(heatmap, filename, figsize=(8, 6), dpi=300, fontsize=8):
+    plt.figure(figsize=figsize)
     plt.imshow(heatmap, cmap='hot', interpolation='nearest')
+    plt.tight_layout()
     plt.axis('off')
-    plt.savefig(filename, bbox_inches='tight')
+
+    # Add a colorbar legend
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel('Intensity')
+
+    # Increase font size for better legibility
+    # plt.rcParams['font.size'] = fontsize
+
+    # Save the figure
+    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
     plt.close()

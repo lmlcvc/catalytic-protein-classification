@@ -15,6 +15,7 @@ import logging
 
 from graphein.protein.config import ProteinGraphConfig
 from graphein.protein.edges.atomic import add_atomic_edges
+from graphein.protein import add_peptide_bonds, add_hydrogen_bond_interactions
 from graphein.protein.graphs import construct_graph
 from graphein.protein.visualisation import plotly_protein_structure_graph
 
@@ -32,12 +33,12 @@ file_list_dir = config['file_list_dir']
 
 # graphein config
 graphein_config = None
-graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
-# graphein_params_to_change = {"protein_df_processing_functions": True}
 
 if graph_type == "residue":
-    graphein_config = ProteinGraphConfig()
+    graphein_params_to_change = {"edge_construction_functions": [add_peptide_bonds, add_hydrogen_bond_interactions]}
+    graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 elif graph_type == "atom":
+    graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
     graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
 graphein_config.dict()

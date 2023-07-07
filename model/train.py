@@ -39,14 +39,12 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
     return train_gen, test_gen
 
 
-def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
+def train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
     test_accs = []
 
     stratified_folds = model_selection.RepeatedStratifiedKFold(
         n_splits=folds, n_repeats=n_repeats
     ).split(graph_labels, graph_labels)
-
-    model = create_graph_classification_model_gcn(graph_generator)  # Initialize the model
 
     for i, (train_index, test_index) in enumerate(stratified_folds):
         print(f"Training and evaluating on fold {i + 1} out of {folds * n_repeats}...")
