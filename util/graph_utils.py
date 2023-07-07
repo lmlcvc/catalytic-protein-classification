@@ -30,6 +30,7 @@ targets_dir = config['targets_dir']
 graph_dir = config['graph_dir']
 categories_dir = config['categories_dir']
 file_list_dir = config['file_list_dir']
+use_distance_as_weight = config['use_distance_as_weight']
 
 # graphein config
 graphein_config = None
@@ -210,7 +211,10 @@ def load_graphs(source_directory):
         nodes_df = replace_categories(nodes_df, categories_dir, "nodes")
         edges_df = replace_categories(edges_df, categories_dir, "edges")
 
-        graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df, edge_weight_column='distance'))
+        if use_distance_as_weight.lower() == 'y':
+            graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df, edge_weight_column='distance'))
+        else:
+            graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
 
     return graphs
 
