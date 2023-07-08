@@ -68,9 +68,6 @@ if __name__ == "__main__":
             [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
              os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
-
-        gu.generate_categories(demo_graph_dir, categories_dir)
-        logging.info("Generated demo categories graphs")
     else:
         if not os.listdir(graph_dir):
             [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
@@ -81,13 +78,14 @@ if __name__ == "__main__":
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
 
-        gu.generate_categories(graph_dir, categories_dir)
-        logging.info("Generated categories graphs")
-
     if not os.listdir(inference_dir):
         [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
          os.listdir(pdb_inference_dir)]
         logging.info("Generated inference graphs")
+
+    gu.generate_categories(graph_dir, categories_dir)
+    gu.generate_categories(inference_dir, categories_dir)
+    logging.info("Generated graph categories")
 
     # Adapt graphs to Keras model
     if demo_run == "Y" or demo_run == "y":
