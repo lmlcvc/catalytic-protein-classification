@@ -219,7 +219,7 @@ def load_graphs(source_directory):
     return graphs
 
 
-def load_graph_labels(filename="targets.txt"):
+def load_graph_labels(filename="ground_truth.txt"):
     with open(os.path.join(targets_dir, filename), "r") as f:
         df = pd.DataFrame([[entry for entry in line.split()] for line in f])
         df.columns = ["index", "label"]

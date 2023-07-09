@@ -2,14 +2,8 @@ from keras import Model, Input
 from keras.layers import Dense
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
-from sklearn import model_selection
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-from tabulate import tabulate
 
 import tensorflow as tf
 
@@ -84,53 +78,3 @@ def create_graph_classification_model_dcgnn(generator):
                   metrics=["acc"])
 
     return model
-
-
-# Create a function to get the gradients of the output predictions with respect to the input graph nodes
-@tf.function
-def get_gradients(model, inputs):
-    x_t, mask, A_m = inputs  # Unpack the input tensors
-
-    mask_float = tf.where(mask, tf.ones_like(mask, dtype=tf.float32),
-                          tf.zeros_like(mask, dtype=tf.float32))
-
-    inputs_adapted = [x_t, mask_float, A_m]
-
-    with tf.GradientTape() as tape:
-        tape.watch(inputs[0])
-        predictions = model(inputs)
-
-    # gradients = tape.gradient(predictions, inputs_adapted)
-    gradients = tape.gradient(predictions, inputs[0])
-
-    return gradients
-
-
-def visualize_heatmap(heatmap, filename, figsize=(8, 8), dpi=300):
-    plt.figure(figsize=figsize, dpi=dpi)
-    plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='auto')
-    plt.axis('off')
-    cbar = plt.colorbar()
-    cbar.ax.set_ylabel('Saliency')
-    plt.xlabel('Node Index')
-    plt.ylabel('Feature Index')
-    plt.tight_layout()
-    plt.savefig(filename, bbox_inches='tight')
-    plt.close()
-
-
-def evaluate_model(predictions, labels):
-    predictions = [prediction for sublist in predictions for prediction in sublist]
-    accuracy = accuracy_score(labels, predictions)
-    precision = precision_score(labels, predictions)
-    recall = recall_score(labels, predictions)
-    f1 = f1_score(labels, predictions)
-    roc_auc = roc_auc_score(labels, predictions)
-
-    metric_names = ["Accuracy", "Precision", "Recall", "F1-score", "ROC AUC"]
-    metric_values = [accuracy, precision, recall, f1, roc_auc]
-
-    metric_rows = [[name, value] for name, value in zip(metric_names, metric_values)]
-
-    table = tabulate(metric_rows, headers=["Metric", "Value"], tablefmt="grid")
-    print(table)

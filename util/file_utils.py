@@ -173,7 +173,7 @@ def generate_targets(pdb_source_directories):
     lines_filtered.sort(key=str.lower)
 
     create_folder(targets_dir)
-    targets_file = open(os.path.join(targets_dir, "targets.txt"), "w")
+    targets_file = open(os.path.join(targets_dir, "ground_truth.txt"), "w")
     targets_file.write("\n".join(line for line in lines_filtered))
 
 

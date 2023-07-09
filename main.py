@@ -4,9 +4,8 @@ from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
 from model.train import train_model
-from model.model import get_gradients, in_out_tensors, visualize_heatmap, create_graph_classification_model_gcn, \
-    create_graph_classification_model_dcgnn, evaluate_model
-from util import file_utils as fu, graph_utils as gu
+from model.model import in_out_tensors, create_graph_classification_model_gcn, create_graph_classification_model_dcgnn
+from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
 from datetime import datetime
 
 import os
@@ -140,7 +139,6 @@ if __name__ == "__main__":
 
     inference_labels = gu.load_graph_labels("inference_truth.txt")
     # Prepare input graph data for inference
-    # inference_tensors = graph_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
     inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
     inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
 
@@ -158,6 +156,9 @@ if __name__ == "__main__":
     os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
     run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
 
+    features_ranked_total = [[0 for j in range(inference_generator.node_features_size)] for i in
+                             range(inference_generator.node_features_size)]
+
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
         print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
@@ -169,12 +170,11 @@ if __name__ == "__main__":
             print(f"Skipping graph {i + 1} due to None input.")
             continue
 
-        gradients = get_gradients(model, inputs)
+        # Gradients
+        gradients = vu.get_gradients(model, inputs)
 
         # Saliency map
-        saliency_map = np.abs(gradients[0].numpy())
-        saliency_map /= np.max(saliency_map)
-        saliency_map = np.transpose(saliency_map)  # Transpose the saliency map
+        saliency_map = vu.calculate_saliency(gradients)
 
         # Feature importance ranking
         feature_importance = np.mean(np.abs(gradients[0].numpy()), axis=0)
@@ -182,9 +182,11 @@ if __name__ == "__main__":
 
         # Print feature importance ranking
         for rank, feature_index in enumerate(feature_ranking):
+            features_ranked_total[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
         # Visualize the saliency map and save it as an image
-        visualize_heatmap(saliency_map, os.path.join(run_dir, f"saliency_map-{i}.png"))
+        vu.visualize_heatmap(saliency_map, os.path.join(run_dir, f"saliency_map-{i}.png"))
 
-    evaluate_model(binary_predictions, inference_labels)
+    vu.evaluate_model(binary_predictions, inference_labels)
+    vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))
