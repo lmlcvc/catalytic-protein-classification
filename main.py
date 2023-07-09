@@ -89,9 +89,6 @@ if __name__ == "__main__":
          os.listdir(pdb_inference_dir)]
         logging.info("Generated inference graphs")
 
-    # FIXME remove this line later
-    gu.generate_categories(graph_dir, categories_dir)
-
     # Adapt graphs to Keras model
     if demo_run == "Y" or demo_run == "y":
         graphs = gu.load_graphs(demo_graph_dir)

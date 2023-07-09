@@ -160,7 +160,12 @@ def generate_graph(source_directory, entry, output_directory):
 
 
 def standardise_category(category):
-    return ','.join(sorted(category.split(',')))
+    if not isinstance(category, str):
+        return category
+    elif ',' not in category:
+        return category
+
+    return ', '.join(sorted(category.split(', '), key=str.lower))
 
 
 def store_categories(df, column_list, output_directory, df_type="nodes"):
