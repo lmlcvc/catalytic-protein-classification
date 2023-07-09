@@ -60,6 +60,7 @@ if __name__ == "__main__":
     # graph generation
     graphs = []
     fu.create_folder(graph_dir)
+    fu.create_folder(demo_graph_dir)
     fu.create_folder(inference_dir)
 
     if demo_run == "Y" or demo_run == "y":
@@ -87,6 +88,9 @@ if __name__ == "__main__":
         [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
          os.listdir(pdb_inference_dir)]
         logging.info("Generated inference graphs")
+
+    # FIXME remove this line later
+    gu.generate_categories(graph_dir, categories_dir)
 
     # Adapt graphs to Keras model
     if demo_run == "Y" or demo_run == "y":

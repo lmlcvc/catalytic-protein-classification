@@ -44,6 +44,7 @@ elif graph_type == "atom":
 
 graphein_config.dict()
 
+
 # TODO organise code
 
 
@@ -158,6 +159,10 @@ def generate_graph(source_directory, entry, output_directory):
     edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
 
 
+def standardise_category(category):
+    return ','.join(sorted(category.split(',')))
+
+
 def store_categories(df, column_list, output_directory, df_type="nodes"):
     fu.create_folder(output_directory)
 
@@ -169,7 +174,14 @@ def store_categories(df, column_list, output_directory, df_type="nodes"):
         categories_df.reset_index(inplace=True)
         categories_df.columns = ["category", "value"]
         categories_df = categories_df.reindex(columns=["value", "category"])
-        categories_df.to_csv(os.path.join(output_directory, f"{column}_{df_type}.csv"), index=None)
+
+        categories_df["category"] = categories_df["category"].apply(standardise_category)
+
+        file_path = os.path.join(output_directory, f"{column}_{df_type}.csv")
+        if os.path.exists(file_path):
+            categories_df.to_csv(file_path, mode='a', header=False, index=None)
+        else:
+            categories_df.to_csv(file_path, index=None)
 
 
 def generate_categories(source_directory, output_directory):
@@ -190,8 +202,8 @@ def generate_categories(source_directory, output_directory):
     edges_categories = ['kind']
     if graph_type == "atom":
         nodes_categories.extend(['atom_type', 'element_symbol'])
-    store_categories(nodes_df, nodes_categories, output_directory, df_type="nodes")
 
+    store_categories(nodes_df, nodes_categories, output_directory, df_type="nodes")
     store_categories(edges_df, edges_categories, output_directory, df_type="edges")
 
 
