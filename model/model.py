@@ -3,11 +3,13 @@ from keras.layers import Dense
 from keras.losses import binary_crossentropy
 from keras.optimizers import Adam
 from sklearn import model_selection
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from tabulate import tabulate
 
 import tensorflow as tf
 
@@ -104,19 +106,31 @@ def get_gradients(model, inputs):
     return gradients
 
 
-def visualize_grad_cam(heatmap, filename, figsize=(8, 6), dpi=300, fontsize=8):
-    plt.figure(figsize=figsize)
-    plt.imshow(heatmap, cmap='hot', interpolation='nearest')
-    plt.tight_layout()
+def visualize_heatmap(heatmap, filename, figsize=(8, 8), dpi=300):
+    plt.figure(figsize=figsize, dpi=dpi)
+    plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='auto')
     plt.axis('off')
-
-    # Add a colorbar legend
     cbar = plt.colorbar()
-    cbar.ax.set_ylabel('Intensity')
-
-    # Increase font size for better legibility
-    # plt.rcParams['font.size'] = fontsize
-
-    # Save the figure
-    plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    cbar.ax.set_ylabel('Saliency')
+    plt.xlabel('Node Index')
+    plt.ylabel('Feature Index')
+    plt.tight_layout()
+    plt.savefig(filename, bbox_inches='tight')
     plt.close()
+
+
+def evaluate_model(predictions, labels):
+    predictions = [prediction for sublist in predictions for prediction in sublist]
+    accuracy = accuracy_score(labels, predictions)
+    precision = precision_score(labels, predictions)
+    recall = recall_score(labels, predictions)
+    f1 = f1_score(labels, predictions)
+    roc_auc = roc_auc_score(labels, predictions)
+
+    metric_names = ["Accuracy", "Precision", "Recall", "F1-score", "ROC AUC"]
+    metric_values = [accuracy, precision, recall, f1, roc_auc]
+
+    metric_rows = [[name, value] for name, value in zip(metric_names, metric_values)]
+
+    table = tabulate(metric_rows, headers=["Metric", "Value"], tablefmt="grid")
+    print(table)

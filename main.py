@@ -4,10 +4,10 @@ from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
 from model.train import train_model
-from model.model import get_gradients, in_out_tensors, create_graph_classification_model_gcn, create_graph_classification_model_dcgnn
+from model.model import get_gradients, in_out_tensors, visualize_heatmap, create_graph_classification_model_gcn, \
+    create_graph_classification_model_dcgnn, evaluate_model
 from util import file_utils as fu, graph_utils as gu
 from datetime import datetime
-import matplotlib.pyplot as plt
 
 import os
 import configparser
@@ -68,6 +68,9 @@ if __name__ == "__main__":
             [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
              os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
+
+            gu.generate_categories(demo_graph_dir, categories_dir)
+            logging.info("Generated graph categories")
     else:
         if not os.listdir(graph_dir):
             [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
@@ -78,14 +81,13 @@ if __name__ == "__main__":
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
 
+            gu.generate_categories(graph_dir, categories_dir)
+            logging.info("Generated graph categories")
+
     if not os.listdir(inference_dir):
         [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
          os.listdir(pdb_inference_dir)]
         logging.info("Generated inference graphs")
-
-    gu.generate_categories(graph_dir, categories_dir)
-    gu.generate_categories(inference_dir, categories_dir)
-    logging.info("Generated graph categories")
 
     # Adapt graphs to Keras model
     if demo_run == "Y" or demo_run == "y":
@@ -158,8 +160,8 @@ if __name__ == "__main__":
 
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
-        print(f"Graph {i + 1} - {graph_labels.index[i]}:\n"
-              f"Predicted class - {prediction}\n\t True class - {round(graph_labels[i])}")
+        print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
+              f"Predicted class - {prediction}\n\t True class - {round(inference_labels[i])}")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]
@@ -183,13 +185,6 @@ if __name__ == "__main__":
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
         # Visualize the saliency map and save it as an image
-        plt.figure(figsize=(8, 8), dpi=300)
-        plt.imshow(saliency_map, cmap='hot', interpolation='nearest', aspect='auto')
-        plt.axis('off')
-        cbar = plt.colorbar()
-        cbar.ax.set_ylabel('Saliency')
-        plt.xlabel('Node Index')
-        plt.ylabel('Feature Index')
-        plt.tight_layout()
-        plt.savefig(os.path.join(run_dir, f"saliency_map-{i}.png"), bbox_inches='tight')
-        plt.close()
+        visualize_heatmap(saliency_map, os.path.join(run_dir, f"saliency_map-{i}.png"))
+
+    evaluate_model(binary_predictions, inference_labels)
