@@ -39,36 +39,24 @@ visualization_dir = config['visualization_dir']
 # generation
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-if __name__ == "__main__":
-    # run setup check
-    fu.check_setup(check_setup)
 
-    if one_per_entry.lower() == "y":
-        fu.pick_best()
-
-    # check if files have been transformed
+def check_and_generate_targets():
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
-        if demo_run == "Y" or demo_run == "y":
+        if demo_run.lower() == "y":
             fu.generate_targets([pdb_demo_dir])
         else:
             fu.generate_targets([pdb_catalytic_dir, pdb_non_catalytic_dir])
         logging.info("Finished target generation")
 
-    # Human-readable ground truth files
-    fu.generate_ground_truth(pdb_inference_dir)
 
-    # graph generation
-    graphs = []
-    fu.create_folder(graph_dir)
-    fu.create_folder(demo_graph_dir)
-    fu.create_folder(inference_dir)
-
-    if demo_run == "Y" or demo_run == "y":
+def generate_graphs_and_categories():
+    if demo_run.lower() == "y":
         if not os.listdir(demo_graph_dir):
             [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
              os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
 
+            # Generate graph categories
             gu.generate_categories(demo_graph_dir, categories_dir)
             logging.info("Generated graph categories")
     else:
@@ -84,31 +72,42 @@ if __name__ == "__main__":
             gu.generate_categories(graph_dir, categories_dir)
             logging.info("Generated graph categories")
 
+
+def load_graphs_and_labels():
+    if demo_run.lower() == "y":
+        return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
+    else:
+        return gu.load_graphs(graph_dir), gu.load_graph_labels()
+
+
+def generate_inference_graphs():
     if not os.listdir(inference_dir):
         [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
          os.listdir(pdb_inference_dir)]
         logging.info("Generated inference graphs")
 
-    # Adapt graphs to Keras model
-    if demo_run == "Y" or demo_run == "y":
-        graphs = gu.load_graphs(demo_graph_dir)
+
+def load_model():
+    if use_dgcnn.lower() == "y":
+        if not os.path.exists(os.path.join(model_dir, "dgcnn_model.h5")):
+            return None
+
+        with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
+            model = tf.keras.models.load_model(os.path.join(model_dir, "dgcnn_model.h5"))
+            print(model.summary())
     else:
-        graphs = gu.load_graphs(graph_dir)
-    inference_graphs = gu.load_graphs(inference_dir)
+        if not os.path.exists(os.path.join(model_dir, "gcn_model.h5")):
+            return None
 
-    if not os.path.isdir(visualization_dir):
-        os.mkdir(visualization_dir)
+        with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
+            model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
+            print(model.summary())
 
-    # TODO what connects pdb/graph name to target? (probably order of occurence)
-    graph_labels = gu.load_graph_labels()
-    gu.graphs_summary(graphs, graph_labels)
-    print(graphs[0].info())
+    return model
 
-    graph_generator = PaddedGraphGenerator(graphs=graphs)
 
-    fu.create_folder(model_dir)
-
-    # TODO: Add training parameters to config.ini
+def perform_model_training():
+    model = None
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
             model = create_graph_classification_model_dcgnn(graph_generator)
@@ -119,10 +118,7 @@ if __name__ == "__main__":
             # Save the model
             model.save(os.path.join(model_dir, "dgcnn_model.h5"))
             print("GCN model trained and saved successfully.")
-        else:
-            with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
-                model = tf.keras.models.load_model(os.path.join(model_dir, "dgcnn_model.h5"))
-                print(model.summary())
+
     else:
         if "gcn_model.h5" not in os.listdir(model_dir):
             model = create_graph_classification_model_gcn(graph_generator)
@@ -133,12 +129,55 @@ if __name__ == "__main__":
             # Save the model
             model.save(os.path.join(model_dir, "gcn_model.h5"))
             print("GCN model trained and saved successfully.")
-        else:
-            with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
-                model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
-                print(model.summary())
 
+    return model
+
+
+if __name__ == "__main__":
+    # run setup check
+    fu.check_setup(check_setup)
+
+    if one_per_entry.lower() == "y":
+        fu.pick_best()
+
+    check_and_generate_targets()
+    # fu.generate_ground_truth(pdb_catalytic_dir)
+
+    graphs = []
+    inference_graphs = []
+
+    # Load or generate graphs
+    if not load_model():
+        # Create graphs for model
+        generate_graphs_and_categories()
+        graphs, graph_labels = load_graphs_and_labels()
+        graph_generator = PaddedGraphGenerator(graphs=graphs)
+
+        # Train model
+        model = perform_model_training()
+    else:
+        fu.create_folder(categories_dir)
+        if not os.listdir(categories_dir):
+            gu.generate_categories(demo_graph_dir,
+                                   categories_dir) if demo_run.lower() == "y" else gu.generate_categories(
+                graph_dir, categories_dir)
+            logging.info("Generated graph categories")
+
+        model = load_model()
+
+        if model is None:
+            raise ValueError("Model cannot be None")
+
+        # graphs, graph_labels = load_graphs_and_labels()
+
+    # Generate and use inference graphs
+    fu.create_folder(inference_dir)
+    if not os.listdir(inference_dir):
+        generate_inference_graphs()
+    fu.generate_ground_truth(pdb_inference_dir)
+    inference_graphs = gu.load_graphs(inference_dir)
     inference_labels = gu.load_graph_labels("inference_truth.txt")
+
     # Prepare input graph data for inference
     inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
     inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
@@ -152,7 +191,10 @@ if __name__ == "__main__":
     x_t, mask, A_m = in_out_tensors(inference_generator, model)[0]
     inputs = [x_t, mask, A_m]
 
-    # Compute and visualize Grad-CAM heatmaps for each sample in the inference dataset
+    # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
+    if not os.path.isdir(visualization_dir):
+        os.mkdir(visualization_dir)
+
     run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
     run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
