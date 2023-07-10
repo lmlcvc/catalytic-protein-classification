@@ -1,9 +1,18 @@
+import os
+
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 import tensorflow as tf
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+config = config['default']
+
+model_dir = config['model_dir']
 
 
 @tf.function
@@ -44,6 +53,32 @@ def visualize_heatmap(heatmap, filename, figsize=(8, 8), dpi=300):
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
+
+
+def visualize_training(histories, figsize=(10, 6), dpi=300):
+    fig, axes = plt.subplots(2, 1, figsize=figsize, dpi=dpi)
+
+    # Plot loss
+    axes[0].set_xlabel('Epoch')
+    axes[0].set_ylabel('Loss')
+    for i, history in enumerate(histories):
+        axes[0].plot(history.history['loss'], label=f"Fold {i + 1}")
+
+    # Plot accuracy
+    axes[1].set_xlabel('Epoch')
+    axes[1].set_ylabel('Accuracy')
+    for i, history in enumerate(histories):
+        axes[1].plot(history.history['acc'], label=f"Fold {i + 1}")
+
+    # Add legends and adjust layout
+    axes[0].legend()
+    axes[1].legend()
+    plt.tight_layout()
+
+    # Save the figure
+    plt.savefig(os.path.join(model_dir, 'training_history.png'))
+    plt.close()
+
 
 
 def evaluate_model(predictions, labels):

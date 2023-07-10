@@ -7,6 +7,8 @@ from keras.callbacks import EarlyStopping
 from sklearn import model_selection
 from sklearn.metrics import accuracy_score
 
+import util.visualization_utils as vu
+
 from model.model import create_graph_classification_model_gcn
 
 es = EarlyStopping(
@@ -41,6 +43,7 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
 
 def train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
     test_accs = []
+    all_histories = []
 
     stratified_folds = model_selection.RepeatedStratifiedKFold(
         n_splits=folds, n_repeats=n_repeats
@@ -53,6 +56,7 @@ def train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_re
         )
 
         history, acc = train_fold(model, train_gen, test_gen, es, epochs)
+        all_histories.append(history)
         test_accs.append(acc)
 
         print(f"Train set size: {len(train_index)} graphs")
@@ -61,6 +65,8 @@ def train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_re
     print(
         f"Accuracy over all folds mean: {np.mean(test_accs) * 100:.3}% and std: {np.std(test_accs) * 100:.2}%"
     )
+
+    vu.visualize_training(all_histories)
 
     plt.figure(figsize=(8, 6))
     plt.hist(test_accs)
