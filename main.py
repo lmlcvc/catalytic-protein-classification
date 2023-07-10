@@ -173,12 +173,15 @@ if __name__ == "__main__":
 
         # Gradients
         gradients = vu.get_gradients(model, inputs)
+        node_gradients = gradients[0]
+        edge_gradients = gradients[-1]
 
-        # Saliency map
-        saliency_map = vu.calculate_saliency(gradients)
+        # Saliency maps
+        node_saliency_map = vu.calculate_saliency(gradients[0])
+        edge_saliency_map = vu.calculate_saliency(gradients[-1])
 
         # Feature importance ranking
-        feature_importance = np.mean(np.abs(gradients[0].numpy()), axis=0)
+        feature_importance = np.mean(np.abs(node_gradients[0].numpy()), axis=0)
         feature_ranking = np.argsort(feature_importance)[::-1]
 
         # Print feature importance ranking
@@ -186,8 +189,9 @@ if __name__ == "__main__":
             features_ranked_total[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
-        # Visualize the saliency map and save it as an image
-        vu.visualize_heatmap(saliency_map, os.path.join(run_dir, f"saliency_map-{i}.png"))
+        # Visualize the saliency maps and save them as images
+        vu.visualize_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+        vu.visualize_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
     vu.evaluate_model(binary_predictions, inference_labels)
     vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))

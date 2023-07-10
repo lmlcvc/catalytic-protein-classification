@@ -16,11 +16,11 @@ def get_gradients(model, inputs):
 
     inputs_adapted = [x_t, mask_float, A_m]
 
-    with tf.GradientTape() as tape:
-        tape.watch(inputs[0])
+    with tf.GradientTape(persistent=True) as tape:
+        tape.watch(inputs_adapted)
         predictions = model(inputs)
 
-    gradients = tape.gradient(predictions, inputs[0])
+    gradients = (tape.gradient(predictions, x_t), tape.gradient(predictions, A_m))
 
     return gradients
 
