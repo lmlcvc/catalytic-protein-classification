@@ -14,6 +14,13 @@ config = config['default']
 
 model_dir = config['model_dir']
 
+node_feature_names = ["Residue name",
+                      "Residue number",
+                      "B-factor",
+                      "X coordinate",
+                      "Y coordinate",
+                      "Z coordinate"]
+
 
 @tf.function
 def get_gradients(model, inputs):
@@ -98,8 +105,8 @@ def evaluate_model(predictions, labels):
 
 def save_feature_rankings(feature_rankings, filename):
     lines = []
-    for i, feature in enumerate(feature_rankings, start=1):
-        lines.append(f"Feature {i}:")
+    for i, feature in enumerate(feature_rankings):
+        lines.append(f"{node_feature_names[i]}:")
         for j, ranking in enumerate(feature, start=1):
             frequency = (ranking / sum(feature)) * 100.
             lines.append(f"\tRank {j}: {ranking}/{sum(feature)} ({frequency:.0f}%)")
