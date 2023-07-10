@@ -198,7 +198,12 @@ def generate_ground_truth(pdb_source_directory):
                 else:
                     warnings.warn(f"Unexpected table name: {table}")
 
-    pdb_target_list = [pdb.replace(".pdb", "") for pdb in os.listdir(pdb_source_directory)]
+    pdb_target_list = []
+    for pdb in os.listdir(pdb_source_directory):
+        with open(os.path.join(file_list_dir, "non_duplicate_list.txt")) as f:
+            entries = f.read().split('\n')
+            if pdb.replace(".pdb", "") in entries:
+                pdb_target_list.append(pdb.replace(".pdb", ""))
 
     lines_filtered = []
     for line in lines:
