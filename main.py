@@ -232,8 +232,8 @@ if __name__ == "__main__":
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
         # Visualize the saliency maps and save them as images
-        vu.visualize_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-        vu.visualize_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+        vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
     vu.evaluate_model(binary_predictions, inference_labels)
     vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))

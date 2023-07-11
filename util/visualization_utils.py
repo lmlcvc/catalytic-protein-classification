@@ -57,14 +57,26 @@ def calculate_edge_saliency(edge_gradients):
     return edge_saliency_map
 
 
-def visualize_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
+def visualize_node_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.figure(figsize=figsize, dpi=dpi)
     plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='auto')
-    plt.axis('off')
     cbar = plt.colorbar()
     cbar.ax.set_ylabel('Saliency')
     plt.xlabel('Node Index')
     plt.ylabel('Feature Index')
+    plt.yticks(range(len(node_feature_names)), node_feature_names)
+    plt.tight_layout()
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close()
+
+
+def visualize_edge_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
+    plt.figure(figsize=figsize, dpi=dpi)
+    plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='equal')
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel('Saliency')
+    plt.xlabel('Source Node Index')
+    plt.ylabel('Target Node Index')
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
