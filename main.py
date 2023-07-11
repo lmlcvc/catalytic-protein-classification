@@ -205,7 +205,7 @@ if __name__ == "__main__":
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
         print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
-              f"Predicted class - {prediction}\n\t True class - {round(inference_labels[i])}")
+              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels[i])}")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]
@@ -219,8 +219,8 @@ if __name__ == "__main__":
         edge_gradients = gradients[-1]
 
         # Saliency maps
-        node_saliency_map = vu.calculate_saliency(gradients[0])
-        edge_saliency_map = vu.calculate_saliency(gradients[-1])
+        node_saliency_map = vu.calculate_node_saliency(gradients[0])
+        edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
 
         # Feature importance ranking
         feature_importance = np.mean(np.abs(node_gradients[0].numpy()), axis=0)

@@ -41,15 +41,23 @@ def get_gradients(model, inputs):
     return gradients
 
 
-def calculate_saliency(gradients):
-    saliency_map = np.abs(gradients[0].numpy())
+def calculate_node_saliency(node_gradients):
+    saliency_map = np.abs(node_gradients.numpy())
     saliency_map /= np.max(saliency_map)
     saliency_map = np.transpose(saliency_map)
 
     return saliency_map
 
 
-def visualize_heatmap(heatmap, filename, figsize=(8, 8), dpi=300):
+def calculate_edge_saliency(edge_gradients):
+    edge_saliency_map = np.abs(edge_gradients.numpy())
+    edge_saliency_map /= np.max(edge_saliency_map)
+    edge_saliency_map = np.squeeze(edge_saliency_map)
+
+    return edge_saliency_map
+
+
+def visualize_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.figure(figsize=figsize, dpi=dpi)
     plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='auto')
     plt.axis('off')
