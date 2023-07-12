@@ -84,28 +84,38 @@ def visualize_edge_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.close()
 
 
-def calculate_prediction_counts(predictions, category_count):
+def calculate_prediction_counts(predictions, truth_labels, category_count):
     non_catalytic_predictions = []
     catalytic_predictions = []
 
-    for prediction in predictions:
+    non_catalytic_false_counts = np.zeros(category_count)
+    catalytic_false_counts = np.zeros(category_count)
+
+    for prediction, truth_label in zip(predictions, truth_labels):
         category_value = int(prediction * 10) / 10
         if 0 <= prediction < 0.5:
-            non_catalytic_predictions.append(category_value)
+            if np.round(prediction) != truth_label:
+                non_catalytic_false_counts[int(category_value * category_count)] += 1
+            else:
+                non_catalytic_predictions.append(category_value)
         elif 0.5 <= prediction <= 1:
-            catalytic_predictions.append(category_value)
+            if np.round(prediction) != truth_label:
+                catalytic_false_counts[int((category_value - 0.5) * category_count)] += 1
+            else:
+                catalytic_predictions.append(category_value)
         else:
             raise ValueError(f"Prediction must be in [0, 1]. Was {prediction}")
 
-    return non_catalytic_predictions, catalytic_predictions
+    return non_catalytic_predictions, catalytic_predictions, non_catalytic_false_counts, catalytic_false_counts
 
 
-def visualise_predictions(predictions, output_dir, category_count=10):
+def visualise_predictions(predictions, truth_labels, output_dir, category_count=10):
     fu.create_folder(output_dir)
 
-    non_catalytic_predictions, catalytic_predictions = calculate_prediction_counts(predictions, category_count)
-    print(non_catalytic_predictions)
-    print(catalytic_predictions)
+    non_catalytic_predictions, \
+        catalytic_predictions, \
+        non_catalytic_false_counts, \
+        catalytic_false_counts = calculate_prediction_counts(predictions, truth_labels, category_count)
 
     total_categories = category_count * 2
     category_width = 1.0 / total_categories
@@ -114,21 +124,34 @@ def visualise_predictions(predictions, output_dir, category_count=10):
     catalytic_x = np.arange(0.5, 1 + category_width, category_width)
 
     plt.figure(figsize=(8, 6))
-    plt.hist(non_catalytic_predictions, rwidth=0.9, bins=non_catalytic_x)
+    plt.bar(non_catalytic_x[:-1], np.histogram(non_catalytic_predictions, bins=non_catalytic_x)[0],
+            width=0.9 * category_width, align='edge', label='True', color='blue')
+
+    plt.bar(non_catalytic_x[:-1], non_catalytic_false_counts,
+            width=0.9 * category_width, align='edge',
+            bottom=np.histogram(non_catalytic_predictions, bins=non_catalytic_x)[0],
+            label='False', color='red', alpha=0.7)
 
     plt.xlabel('Prediction Category')
     plt.ylabel('Count')
     plt.title('Distribution of Non-catalytic Predictions')
     plt.xticks(non_catalytic_x)
+    plt.legend()
     plt.savefig(os.path.join(output_dir, 'non_catalytic_predictions_histogram'), bbox_inches='tight')
 
     plt.figure(figsize=(8, 6))
-    plt.hist(catalytic_predictions, rwidth=0.9, bins=catalytic_x, color="orange")
+    plt.bar(catalytic_x[:-1], np.histogram(catalytic_predictions, bins=catalytic_x)[0],
+            width=0.9 * category_width, align='edge', label='True', color='blue')
+
+    plt.bar(catalytic_x[:-1], catalytic_false_counts,
+            width=0.9 * category_width, align='edge', bottom=np.histogram(catalytic_predictions, bins=catalytic_x)[0],
+            label='False', color='red', alpha=0.7)
 
     plt.xlabel('Prediction Category')
     plt.ylabel('Count')
     plt.title('Distribution of Catalytic Predictions')
     plt.xticks(catalytic_x)
+    plt.legend()
     plt.savefig(os.path.join(output_dir, 'catalytic_predictions_histogram'), bbox_inches='tight')
 
 

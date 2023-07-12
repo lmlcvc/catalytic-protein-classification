@@ -184,8 +184,7 @@ if __name__ == "__main__":
     inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
 
     # Initialise visualisation/run directory
-    if not os.path.isdir(visualization_dir):
-        os.mkdir(visualization_dir)
+    fu.create_folder(visualization_dir)
 
     run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
@@ -195,7 +194,7 @@ if __name__ == "__main__":
     predictions = model.predict(inference_tensors)
 
     # Visualise predictions histogram
-    vu.visualise_predictions(predictions, os.path.join(run_dir, "predictions"))
+    vu.visualise_predictions(predictions, inference_labels.to_list(), os.path.join(run_dir, "predictions"))
 
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
@@ -204,7 +203,6 @@ if __name__ == "__main__":
     inputs = [x_t, mask, A_m]
 
     # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
-
     features_ranked_total = [[0 for j in range(inference_generator.node_features_size)] for i in
                              range(inference_generator.node_features_size)]
 
