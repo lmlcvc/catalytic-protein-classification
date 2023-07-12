@@ -8,6 +8,8 @@ from tabulate import tabulate
 import tensorflow as tf
 import configparser
 
+import util.file_utils as fu
+
 config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
@@ -80,6 +82,54 @@ def visualize_edge_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
+
+
+def calculate_prediction_counts(predictions, category_count):
+    non_catalytic_predictions = []
+    catalytic_predictions = []
+
+    for prediction in predictions:
+        category_value = int(prediction * 10) / 10
+        if 0 <= prediction < 0.5:
+            non_catalytic_predictions.append(category_value)
+        elif 0.5 <= prediction <= 1:
+            catalytic_predictions.append(category_value)
+        else:
+            raise ValueError(f"Prediction must be in [0, 1]. Was {prediction}")
+
+    return non_catalytic_predictions, catalytic_predictions
+
+
+def visualise_predictions(predictions, output_dir, category_count=10):
+    fu.create_folder(output_dir)
+
+    non_catalytic_predictions, catalytic_predictions = calculate_prediction_counts(predictions, category_count)
+    print(non_catalytic_predictions)
+    print(catalytic_predictions)
+
+    total_categories = category_count * 2
+    category_width = 1.0 / total_categories
+
+    non_catalytic_x = np.arange(0, 0.5 + category_width, category_width)
+    catalytic_x = np.arange(0.5, 1 + category_width, category_width)
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(non_catalytic_predictions, rwidth=0.9, bins=non_catalytic_x)
+
+    plt.xlabel('Prediction Category')
+    plt.ylabel('Count')
+    plt.title('Distribution of Non-catalytic Predictions')
+    plt.xticks(non_catalytic_x)
+    plt.savefig(os.path.join(output_dir, 'non_catalytic_predictions_histogram'), bbox_inches='tight')
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(catalytic_predictions, rwidth=0.9, bins=catalytic_x, color="orange")
+
+    plt.xlabel('Prediction Category')
+    plt.ylabel('Count')
+    plt.title('Distribution of Catalytic Predictions')
+    plt.xticks(catalytic_x)
+    plt.savefig(os.path.join(output_dir, 'catalytic_predictions_histogram'), bbox_inches='tight')
 
 
 def visualize_training(histories, figsize=(10, 6), dpi=300):

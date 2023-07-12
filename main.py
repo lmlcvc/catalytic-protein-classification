@@ -175,6 +175,7 @@ if __name__ == "__main__":
     if not os.listdir(inference_dir):
         generate_inference_graphs()
     fu.generate_ground_truth(pdb_inference_dir)
+    gu.generate_categories(inference_dir, categories_dir)
     inference_graphs = gu.load_graphs(inference_dir)
     inference_labels = gu.load_graph_labels("inference_truth.txt")
 
@@ -182,8 +183,19 @@ if __name__ == "__main__":
     inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
     inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
 
+    # Initialise visualisation/run directory
+    if not os.path.isdir(visualization_dir):
+        os.mkdir(visualization_dir)
+
+    run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
+    run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
+
     # Make predictions using the loaded model
     predictions = model.predict(inference_tensors)
+
+    # Visualise predictions histogram
+    vu.visualise_predictions(predictions, os.path.join(run_dir, "predictions"))
 
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
@@ -192,12 +204,6 @@ if __name__ == "__main__":
     inputs = [x_t, mask, A_m]
 
     # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
-    if not os.path.isdir(visualization_dir):
-        os.mkdir(visualization_dir)
-
-    run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
-    run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
 
     features_ranked_total = [[0 for j in range(inference_generator.node_features_size)] for i in
                              range(inference_generator.node_features_size)]
