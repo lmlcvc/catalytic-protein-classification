@@ -54,33 +54,6 @@ def get_distance_matrix(coords):
     return distance_matrix
 
 
-def pdb_to_graph(pdb_path, distance_threshold=6.0, contain_b_factor=True):
-    atom_df = PandasPdb().read_pdb(pdb_path)
-    atom_df = atom_df.df['ATOM']
-
-    residue_df = atom_df.groupby('residue_number', as_index=False)[
-        ['x_coord', 'y_coord', 'z_coord', 'b_factor']].mean().sort_values('residue_number')
-
-    coords = residue_df[['x_coord', 'y_coord', 'z_coord']].values
-    distance_matrix = get_distance_matrix(coords)
-    adj = distance_matrix < distance_threshold
-
-    u, v = np.nonzero(adj)
-    u, v = torch.from_numpy(u), torch.from_numpy(v)
-    graph = dgl.graph((u, v), num_nodes=len(coords))
-
-    if contain_b_factor:
-        b_factor = torch.from_numpy(residue_df['b_factor'].values)
-        graph.ndata['b_factor'] = b_factor
-
-    return graph
-
-
-def pdb_to_graph_graphein(pdb_path, entry):
-    graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
-    return graph
-
-
 def replace_categories(df, source_dir, df_type):
     if df_type == "nodes":
         columns = ["residue_name"]

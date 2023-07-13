@@ -34,7 +34,7 @@ def create_graph_classification_model_gcn(generator):
         generator=generator,
         dropout=0.5,
     )
-    x_inp, x_out = in_out_tensors(generator, gc_model)
+    x_inp, x_out = gc_model.in_out_tensors()
     predictions = Dense(units=32, activation="relu")(x_out)
     predictions = Dense(units=16, activation="relu")(predictions)
     predictions = Dense(units=1, activation="sigmoid")(predictions)
@@ -57,7 +57,7 @@ def create_graph_classification_model_dcgnn(generator):
         bias=False,
         generator=generator,
     )
-    x_inp, x_out = in_out_tensors(generator, dgcnn_model)
+    x_inp, x_out = dgcnn_model.in_out_tensors()
 
     x_out = tf.keras.layers.Conv1D(filters=16, kernel_size=sum(layer_sizes), strides=sum(layer_sizes))(x_out)
     x_out = tf.keras.layers.MaxPool1D(pool_size=2)(x_out)
