@@ -4,7 +4,7 @@ from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
 from model.train import train_model
-from model.model import in_out_tensors, create_graph_classification_model_gcn, create_graph_classification_model_dcgnn
+from model.model import in_out_tensors
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
 from datetime import datetime
 
@@ -110,9 +110,8 @@ def perform_model_training():
     model = None
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
-            model = create_graph_classification_model_dcgnn(graph_generator)
             # Create and train classification models
-            model = train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -121,9 +120,8 @@ def perform_model_training():
 
     else:
         if "gcn_model.h5" not in os.listdir(model_dir):
-            model = create_graph_classification_model_gcn(graph_generator)
             # Create and train classification models
-            model = train_model(model, graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
