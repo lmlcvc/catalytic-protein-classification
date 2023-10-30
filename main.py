@@ -1,11 +1,12 @@
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
 from model.train import train_model
 from model.model import in_out_tensors
-from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
+from util import file_utils as fu, graph_utils as gu, visualization_utils as vu, analysis_utils as au
 from datetime import datetime
 
 import os
@@ -34,6 +35,8 @@ inference_dir = config['inference_dir']
 model_dir = config['model_dir']
 categories_dir = config['categories_dir']
 visualization_dir = config['visualization_dir']
+
+shap_dir = config['shap_dir']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
 # generation
@@ -132,14 +135,12 @@ def perform_model_training():
 
 
 if __name__ == "__main__":
-    # run setup check
     fu.check_setup(check_setup)
 
-    if one_per_entry.lower() == "y":
+    if one_per_entry.lower() == "y":  # TODO: match check_setup and pick_best calls AAAAAAAAAAAAA
         fu.pick_best()
 
     check_and_generate_targets()
-    # fu.generate_ground_truth(pdb_catalytic_dir)
 
     graphs = []
     inference_graphs = []
@@ -188,6 +189,11 @@ if __name__ == "__main__":
     os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
     run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
 
+    # Initialise analysis directories
+    fu.create_folder(shap_dir)
+    shap_run_dir = os.path.join(os.path.join(shap_dir, f"{run_timestamp}"))
+    os.mkdir(shap_run_dir)
+
     # Make predictions using the loaded model
     predictions = model.predict(inference_tensors)
 
@@ -202,6 +208,12 @@ if __name__ == "__main__":
 
     # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
     features_ranked_total = [[0 for j in range(inference_generator.node_features_size)] for i in
+                             range(inference_generator.node_features_size)]
+
+    features_ranked_positive = [[0 for j in range(inference_generator.node_features_size)] for i in
+                             range(inference_generator.node_features_size)]
+
+    features_ranked_negative = [[0 for j in range(inference_generator.node_features_size)] for i in
                              range(inference_generator.node_features_size)]
 
     for i, graph in enumerate(inference_graphs):
@@ -229,13 +241,30 @@ if __name__ == "__main__":
         feature_ranking = np.argsort(feature_importance)[::-1]
 
         # Print feature importance ranking
+        features_ranked = []
         for rank, feature_index in enumerate(feature_ranking):
+            if inference_labels[i] == 1:
+                features_ranked_positive[feature_index][rank-1] += 1
+            else:
+                features_ranked_negative[feature_index][rank-1] += 1
             features_ranked_total[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
-        # Visualize the saliency maps and save them as images
-        vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+    # TODO: send to aggregation
+    au.aggregation(features_ranked_total)
+    # if true catalytic, append features ranked, predicted class to catalytic_aggregation
+    # if true non-catalytic ...
+
+    # Visualize the saliency maps and save them as images
+    # vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+    # vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+
+    # Analysis data
+    # inference_data_series = pd.Series([inference_tensors])
+    # au.perform_shap(model, inference_data_series, os.path.join(shap_run_dir, f"shap.png"))
+
+    # implement shap last
+    # FIXME: au.perform_shap(model, inference_tensors, os.path.join(shap_run_dir, f"shap.png"))
 
     vu.evaluate_model(binary_predictions, inference_labels)
     vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))
