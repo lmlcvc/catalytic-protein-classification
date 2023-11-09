@@ -36,6 +36,7 @@ model_dir = config['model_dir']
 categories_dir = config['categories_dir']
 visualization_dir = config['visualization_dir']
 
+analysis_dir = config['analysis_dir']
 shap_dir = config['shap_dir']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
@@ -190,6 +191,11 @@ if __name__ == "__main__":
     run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
 
     # Initialise analysis directories
+    # TODO: move to routine if too many
+    fu.create_folder(analysis_dir)
+    analysis_run_dir = os.path.join(os.path.join(analysis_dir, f"{run_timestamp}"))
+    os.mkdir(analysis_run_dir)
+
     fu.create_folder(shap_dir)
     shap_run_dir = os.path.join(os.path.join(shap_dir, f"{run_timestamp}"))
     os.mkdir(shap_run_dir)
@@ -211,10 +217,10 @@ if __name__ == "__main__":
                              range(inference_generator.node_features_size)]
 
     features_ranked_positive = [[0 for j in range(inference_generator.node_features_size)] for i in
-                             range(inference_generator.node_features_size)]
+                                range(inference_generator.node_features_size)]
 
     features_ranked_negative = [[0 for j in range(inference_generator.node_features_size)] for i in
-                             range(inference_generator.node_features_size)]
+                                range(inference_generator.node_features_size)]
 
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
@@ -244,14 +250,14 @@ if __name__ == "__main__":
         features_ranked = []
         for rank, feature_index in enumerate(feature_ranking):
             if inference_labels[i] == 1:
-                features_ranked_positive[feature_index][rank-1] += 1
+                features_ranked_positive[feature_index][rank - 1] += 1
             else:
-                features_ranked_negative[feature_index][rank-1] += 1
+                features_ranked_negative[feature_index][rank - 1] += 1
             features_ranked_total[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
     # TODO: send to aggregation
-    au.aggregation(features_ranked_total)
+    au.feature_aggregation(features_ranked_total, analysis_run_dir)
     # if true catalytic, append features ranked, predicted class to catalytic_aggregation
     # if true non-catalytic ...
 

@@ -1,5 +1,7 @@
 import configparser
+import csv
 import os
+import statistics
 
 import numpy as np
 import pandas as pd
@@ -13,6 +15,7 @@ config.read('config.ini')
 config = config['default']
 
 model_dir = config['model_dir']
+analysis_dir = config['analysis_dir']
 
 node_feature_names = ["Residue name",
                       "Residue number",
@@ -22,31 +25,45 @@ node_feature_names = ["Residue name",
                       "Z coordinate"]
 
 
-def calc_weighted_mean(data):
-    weighted_ranks = [data[idx] * (idx + 1) for idx in range(len(data))]
-    weighted_sum = sum(weighted_ranks)
+def calc_mean(data):
+    ranks = [data[idx] * (idx + 1) for idx in range(len(data))]
+    ranks_sum = sum(ranks)
     total_count = sum(data)
-    return weighted_sum / total_count
+    return round(ranks_sum / total_count, 2)
 
 
-def calc_weighted_median_idx(data):
+def calc_median_idx(data):
     cumulative_freq = np.cumsum(data)
-    total_count = sum(data)
+    total = sum(data)
 
-    median_rank = total_count / 2
+    median_rank = total / 2
     median_index = np.where(cumulative_freq >= median_rank)[0][0]
 
     return median_index + 1
 
 
-def calc_weighted_stdev(data, mean):
+def calc_stdev(data, mean):
     total_count = sum(data)
-    weighted_rank_values = [rank for rank, freq in enumerate(data, 1) for _ in range(freq)]
+    rank_values = [rank for rank, freq in enumerate(data, 1) for _ in range(freq)]
 
-    weighted_variance = sum(
-        [(val - mean) ** 2 * freq for val, freq in zip(weighted_rank_values, data)]) / total_count
+    variance = sum(
+        [(val - mean) ** 2 * freq for val, freq in zip(rank_values, data)]) / total_count
 
-    return np.sqrt(weighted_variance)
+    return round(np.sqrt(variance), 2)
+
+
+def calc_mode(data):
+    # Rank that occurred most times, so index in array with most occurences (+1)
+    feature_max = max(data)
+    indices = [str(idx + 1) for idx, value in enumerate(data) if value == feature_max]
+    return ';'.join(indices)
+
+
+def calc_least_frequent(data):
+    # Rank that occurred least times, so index in array with most occurences (+1)
+    feature_min = min(data)
+    indices = [str(idx + 1) for idx, value in enumerate(data) if value == feature_min]
+    return ';'.join(indices)
 
 
 """
@@ -56,36 +73,45 @@ This can help you identify class-specific patterns.
 """
 
 
-def aggregation(feature_ranks):
-    # TODO: add type-based csv log and visualisation destination
+# TODO: class aggregation
 
-    for feature, row in zip(node_feature_names, feature_ranks):
-        weighted_mean = calc_weighted_mean(row)
 
-        weighted_median_rank = calc_weighted_median_idx(row)
+def feature_aggregation(feature_ranks, dest_dir):
+    filepath = os.path.join(dest_dir, "feature_aggregation.csv")
 
-        weighted_std_deviation = calc_weighted_stdev(row, weighted_mean)
+    for feature, rank_occurences in zip(node_feature_names, feature_ranks):
+        feature_aggregation_data = []
 
-        # TODO: move to VU - Create a weighted histogram
-        # FIXME: plotting
-        rank_values = [rank for rank, freq in enumerate(row, 1) for _ in range(freq)]
+        mean = calc_mean(rank_occurences)
+        median_rank = calc_median_idx(rank_occurences)
+        stdev = calc_stdev(rank_occurences, mean)
+
+        mode = calc_mode(rank_occurences)
+        least_frequent = calc_least_frequent(rank_occurences)
+
+        feature_aggregation_data.append([feature, mode, least_frequent, mean, median_rank, stdev])
+
+        # TODO: move to VU - Create a bar with extras; add destination
+        rank_values = [rank + 1 for rank in range(len(rank_occurences))]
 
         plt.clf()
-        plt.hist(rank_values, bins=len(row), weights=rank_values, edgecolor='k', alpha=0.75)
+        plt.bar(rank_values, rank_occurences)
         plt.xlabel('Rank')
-        plt.ylabel('Weighted Frequency')
-        plt.title('Weighted Rank Distribution')
+        plt.ylabel('Frequency')
+        plt.title(f'{feature} rank distribution')
 
-        # Add weighted mean and median to the plot
-        plt.axvline(weighted_mean, color='red', linestyle='dashed', linewidth=2, label='Weighted Mean')
-        plt.axvline(weighted_median_rank, color='green', linestyle='dashed', linewidth=2, label='Weighted Median')
+        plt.axvline(mean, color='red', linestyle='dashed', linewidth=2, label='Mean')
+        plt.axvline(median_rank, color='green', linestyle='dashed', linewidth=2, label='Median')
 
         plt.legend()
         plt.savefig(f'./tmp/{feature}.png')
 
-        print(f"Mean Rank for {feature}: {weighted_mean}")
-        print(f"Median Rank for {feature}: {weighted_median_rank}")
-        print(f"Standard Deviation of Ranks for {feature}: {weighted_std_deviation}\n")
+        with open(filepath, mode='a', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+
+            if os.path.getsize(filepath) == 0:
+                writer.writerow(['feature', 'mode', 'least_frequent', 'mean', 'median', 'stdev'])
+            writer.writerows(feature_aggregation_data)
 
 
 """
