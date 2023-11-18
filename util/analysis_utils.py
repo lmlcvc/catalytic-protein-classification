@@ -73,6 +73,7 @@ def class_aggregation(feature_ranks, dest_dir, mode):
 
     filepath = os.path.join(dest_dir, f"feature_aggregation_{mode}.csv")
     feature_rank_analysis(feature_ranks, filepath)
+    feature_correlations(filepath)
 
 
 def feature_rank_analysis(feature_ranks, filepath):
@@ -121,22 +122,16 @@ def feature_rank_analysis(feature_ranks, filepath):
             writer.writerows(feature_aggregation_data)
 
 
-"""
-TODO: Feature Correlations:
-Analyze correlations between important features. Are there features that tend to be important together?
-This might indicate that certain sets of features are more informative for the model.
-"""
-
-
 def feature_correlations(log_path):
+    """
+    Analyze correlations between important features. Are there features that tend to be important together?
+    This might indicate that certain sets of features are more informative for the model.
+    """
     df = pd.read_csv(log_path)
-    rank_columns = ['mode', 'least_frequent', 'mean', 'median', 'stdev']
-    rankings = df[rank_columns]
-
-    # Calculate correlation matrix
-    correlation_matrix = rankings.corr()
+    correlation_matrix = df.corr()
 
     # Visualize the correlation matrix as a heatmap
+    # TODO: move to vu and define plot paths; if useful
     plt.figure(figsize=(8, 6))
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
     plt.title('Feature Correlations')
