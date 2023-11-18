@@ -1,12 +1,12 @@
 import configparser
 import csv
 import os
-import statistics
 
 import numpy as np
 import pandas as pd
 import shap
 from matplotlib import pyplot as plt
+import seaborn as sns
 import tensorflow as tf
 from stellargraph.layer import GraphConvolution
 
@@ -66,18 +66,25 @@ def calc_least_frequent(data):
     return ';'.join(indices)
 
 
-"""
-TODO: Aggregation
-Group proteins by class and compute summary statistics (mean, median, etc.) for feature importance scores within each class.
-This can help you identify class-specific patterns.
-"""
-
-
 # TODO: class aggregation
+def class_aggregation(feature_ranks, dest_dir, mode):
+    if mode not in ["positive", "negative", "all"]:
+        raise ValueError("Class aggregation mode must be 'positive', 'negative' or 'all'.")
+
+    filepath = os.path.join(dest_dir, f"feature_aggregation_{mode}.csv")
+    feature_rank_analysis(feature_ranks, filepath)
 
 
-def feature_aggregation(feature_ranks, dest_dir):
-    filepath = os.path.join(dest_dir, "feature_aggregation.csv")
+def feature_rank_analysis(feature_ranks, filepath):
+    """
+    Analyse and plot each feature's ranked importance.
+    Make csv log of observed and calculated data.
+
+    Args:
+        feature_ranks: List of rank arrays, for each feature. Numbers represent the counts of rank (index+1)
+        filepath: Path to csv log file
+
+    """
 
     for feature, rank_occurences in zip(node_feature_names, feature_ranks):
         feature_aggregation_data = []
@@ -121,8 +128,19 @@ This might indicate that certain sets of features are more informative for the m
 """
 
 
-def feature_correlations():
-    pass
+def feature_correlations(log_path):
+    df = pd.read_csv(log_path)
+    rank_columns = ['mode', 'least_frequent', 'mean', 'median', 'stdev']
+    rankings = df[rank_columns]
+
+    # Calculate correlation matrix
+    correlation_matrix = rankings.corr()
+
+    # Visualize the correlation matrix as a heatmap
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
+    plt.title('Feature Correlations')
+    plt.savefig(f'./tmp/correlation.png')
 
 
 """

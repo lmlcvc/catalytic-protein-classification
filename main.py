@@ -213,8 +213,8 @@ if __name__ == "__main__":
     inputs = [x_t, mask, A_m]
 
     # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
-    features_ranked_total = [[0 for j in range(inference_generator.node_features_size)] for i in
-                             range(inference_generator.node_features_size)]
+    features_ranked_all = [[0 for j in range(inference_generator.node_features_size)] for i in
+                           range(inference_generator.node_features_size)]
 
     features_ranked_positive = [[0 for j in range(inference_generator.node_features_size)] for i in
                                 range(inference_generator.node_features_size)]
@@ -253,13 +253,12 @@ if __name__ == "__main__":
                 features_ranked_positive[feature_index][rank - 1] += 1
             else:
                 features_ranked_negative[feature_index][rank - 1] += 1
-            features_ranked_total[feature_index][rank - 1] += 1
+            features_ranked_all[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
-    # TODO: send to aggregation
-    au.feature_aggregation(features_ranked_total, analysis_run_dir)
-    # if true catalytic, append features ranked, predicted class to catalytic_aggregation
-    # if true non-catalytic ...
+    au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
+    au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
+    au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
 
     # Visualize the saliency maps and save them as images
     # vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
@@ -273,4 +272,4 @@ if __name__ == "__main__":
     # FIXME: au.perform_shap(model, inference_tensors, os.path.join(shap_run_dir, f"shap.png"))
 
     vu.evaluate_model(binary_predictions, inference_labels)
-    vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))
+    vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))

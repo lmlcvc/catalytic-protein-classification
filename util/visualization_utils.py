@@ -69,6 +69,7 @@ def visualize_node_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.yticks(range(len(node_feature_names)), node_feature_names)
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
+    plt.show()
     plt.close()
 
 
