@@ -256,20 +256,23 @@ if __name__ == "__main__":
             features_ranked_all[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
+    # TODO: uncomment
+    # class-aggregated analysis
+    """
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
     au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
     au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
+    """
 
+    # TODO: uncomment
     # Visualize the saliency maps and save them as images
     # vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
     # vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
     # Analysis data
     # inference_data_series = pd.Series([inference_tensors])
-    # au.perform_shap(model, inference_data_series, os.path.join(shap_run_dir, f"shap.png"))
-
-    # implement shap last
-    # FIXME: au.perform_shap(model, inference_tensors, os.path.join(shap_run_dir, f"shap.png"))
+    # au.perform_shap(model, inference_tensors, os.path.join(shap_run_dir, f"shap.png"))
+    #  au.perform_lime(model, inference_graphs, os.path.join(shap_run_dir, f"shap.png"))
 
     vu.evaluate_model(binary_predictions, inference_labels)
     vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
