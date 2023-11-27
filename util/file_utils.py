@@ -1,3 +1,4 @@
+import json
 import os
 import configparser
 import pandas as pd
@@ -9,12 +10,18 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
+demo_run = config['demo_run']
+
 tables_dir = config['tables_dir']
 targets_dir = config['targets_dir']
 file_list_dir = config['file_list_dir']
 
 pdb_catalytic_dir = config['pdb_catalytic_dir']
 pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
+pdb_demo_dir = config['pdb_demo_dir']
+pdb_inference_dir = config['pdb_inference_dir']
+
+aas_dir = config['aas_dir']
 
 
 def create_folder(output_directory):
@@ -214,3 +221,88 @@ def generate_ground_truth(pdb_source_directory):
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "inference_truth.txt"), "w")
     targets_file.write("\n".join(line for line in lines_filtered))
+
+
+def update_protein_classification(file_path, protein_classification):
+    with open(file_path, 'r') as file:
+        for line in file:
+            parts = line.strip().split()
+            key = parts[0]
+            value = {"true_class": int(parts[1])}
+            protein_classification[key] = value
+
+
+def get_aas_by_protein(protein_classification, pdb_dir):
+    ppdb = PandasPdb()
+    for filename in os.listdir(pdb_dir):
+        if not filename.endswith(".pdb"):
+            continue
+        ppdb.read_pdb(os.path.join(pdb_dir, filename))
+        unique_residue_names_list = ppdb.df["ATOM"]["residue_name"].unique().tolist()
+
+        pdb = filename.strip(".pdb")
+        if pdb in protein_classification.keys():
+            protein_classification[pdb]["unique_aas"] = unique_residue_names_list
+        else:
+            print(f"Warning: {pdb} in PDB directory but not in truth labels list")
+
+
+def generate_aa_json():
+    with open(os.path.join(aas_dir, "aas_by_protein.json"), 'r') as json_file:
+        protein_data = json.load(json_file)
+
+    amino_acids_freq_data = {}
+
+    for protein_id, data in protein_data.items():
+        true_class = data["true_class"]
+        unique_aas = data["unique_aas"]
+
+        for amino_acid in unique_aas:
+            if amino_acid not in amino_acids_freq_data.keys():
+                amino_acids_freq_data[amino_acid] = {
+                    "true_pos": 0,
+                    "true_neg": 0,
+                    "pred_pos_correct": 0,
+                    "pred_pos_incorrect": 0,
+                    "pred_neg_correct": 0,
+                    "pred_neg_incorrect": 0
+                }
+
+            if true_class == 1:
+                amino_acids_freq_data[amino_acid]["true_pos"] += 1
+            elif true_class == 0:
+                amino_acids_freq_data[amino_acid]["true_neg"] += 1
+
+    json_file_path = os.path.join(aas_dir, "aa_freqs_init.json")
+    with open(json_file_path, 'w') as json_file:
+        json.dump(amino_acids_freq_data, json_file, indent=4)
+
+
+def generate_aa_frequencies():
+    create_folder(aas_dir)
+    protein_classification = {}
+
+    # FIXME: ensure that targets.txt matches run mode (demo vs real)
+
+    training_targets = os.path.join(targets_dir, "targets.txt")
+    inference_targets = os.path.join(targets_dir, "inference_truth.txt")
+
+    # match protein to true class
+    update_protein_classification(training_targets, protein_classification)
+    update_protein_classification(inference_targets, protein_classification)
+
+    # match unique AAs to each protein
+    if "aas_by_protein.json" not in os.listdir(aas_dir):
+        if demo_run.lower() == "y":
+            get_aas_by_protein(protein_classification, pdb_demo_dir)
+        else:
+            get_aas_by_protein(protein_classification, pdb_catalytic_dir)
+            get_aas_by_protein(protein_classification, pdb_non_catalytic_dir)
+        get_aas_by_protein(protein_classification, pdb_inference_dir)
+
+        json_file_path = os.path.join(aas_dir, "aas_by_protein.json")
+        with open(json_file_path, 'w') as json_file:
+            json.dump(protein_classification, json_file, indent=4)
+
+    if "aa_freqs_init.json" not in os.listdir(aas_dir):
+        generate_aa_json()

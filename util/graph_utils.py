@@ -215,9 +215,8 @@ def load_graph_labels(filename="ground_truth.txt"):
         df.columns = ["index", "label"]
 
         df = df.set_index(df.columns[0])
-        df["label"] = df["label"].astype(float)  # .astype("category")
+        df["label"] = df["label"].astype(float)
 
-        # ?????
         df = df.squeeze()
         return df
 

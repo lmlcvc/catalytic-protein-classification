@@ -63,6 +63,7 @@ def generate_graphs_and_categories():
             # Generate graph categories
             gu.generate_categories(demo_graph_dir, categories_dir)
             logging.info("Generated graph categories")
+
     else:
         if not os.listdir(graph_dir):
             [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
@@ -196,9 +197,7 @@ if __name__ == "__main__":
     analysis_run_dir = os.path.join(os.path.join(analysis_dir, f"{run_timestamp}"))
     os.mkdir(analysis_run_dir)
 
-    fu.create_folder(shap_dir)
-    shap_run_dir = os.path.join(os.path.join(shap_dir, f"{run_timestamp}"))
-    os.mkdir(shap_run_dir)
+    os.mkdir(os.path.join(analysis_run_dir, "amino_acids"))
 
     # Make predictions using the loaded model
     predictions = model.predict(inference_tensors)
@@ -221,6 +220,8 @@ if __name__ == "__main__":
 
     features_ranked_negative = [[0 for j in range(inference_generator.node_features_size)] for i in
                                 range(inference_generator.node_features_size)]
+
+    fu.generate_aa_frequencies()  # TODO: if not already done
 
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
@@ -256,20 +257,20 @@ if __name__ == "__main__":
             features_ranked_all[feature_index][rank - 1] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
-    # TODO: uncomment
     # class-aggregated analysis
-    """
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
     au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
     au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
-    """
 
-    # TODO: uncomment
     # Visualize the saliency maps and save them as images
-    # vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-    # vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+    vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+    vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
-    # Analysis data
+    au.aa_freq_analysis(zip(os.listdir(pdb_inference_dir), binary_predictions, inference_labels),
+                        os.path.join(analysis_run_dir, "amino_acids"))
+    au.extract_popular_aas(analysis_run_dir)
+
+    # shap analysis data
     # inference_data_series = pd.Series([inference_tensors])
     # au.perform_shap(model, inference_tensors, os.path.join(shap_run_dir, f"shap.png"))
     #  au.perform_lime(model, inference_graphs, os.path.join(shap_run_dir, f"shap.png"))
