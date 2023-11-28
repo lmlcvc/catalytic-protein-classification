@@ -34,10 +34,6 @@ node_feature_names = ["Residue name",
                       "Y coordinate",
                       "Z coordinate"]
 
-"""
-https://medium.com/stellargraph/https-medium-com-stellargraph-saliency-maps-for-graph-machine-learning-5cca536974da
-"""
-
 
 def calc_mean(data):
     ranks = [data[idx] * (idx + 1) for idx in range(len(data))]
@@ -203,17 +199,23 @@ def extract_popular_aas(run_dir, top_n=5):
             amino_acids.append(aa)
 
         if total_pos > 0:
-            pos_ratio = round(total_pos / total_preds, 2)
+            expected_ratio = total_pos / (total_pos + total_neg)  # expected ratio in a balanced dataset
+            pos_ratio = total_pos / total_preds  # observed ratio
+
+            normalised_pos_ratio = round(pos_ratio / expected_ratio, 2)
             correctness_percentage_pos = (data["pred_pos_correct"] / total_pos) * 100 if total_pos > 0 else 0
 
-            popularity_ratios_pos.append(pos_ratio)
+            popularity_ratios_pos.append(normalised_pos_ratio)
             correctness_percentages_pos.append(correctness_percentage_pos)
 
         if total_neg > 0:
-            neg_ratio = round(total_neg / total_preds, 2)
+            expected_ratio = total_neg / (total_pos + total_neg)
+            neg_ratio = total_neg / total_preds
+
+            normalised_neg_ratio = round(neg_ratio / expected_ratio, 2)
             correctness_percentage_neg = (data["pred_neg_correct"] / total_neg) * 100 if total_neg > 0 else 0
 
-            popularity_ratios_neg.append(neg_ratio)
+            popularity_ratios_neg.append(normalised_neg_ratio)
             correctness_percentages_neg.append(correctness_percentage_neg)
 
     df_pos = pd.DataFrame({
@@ -253,9 +255,10 @@ def extract_popular_aas(run_dir, top_n=5):
     output_csv_path = os.path.join(run_dir, "amino_acids", "popularity_rankings.csv")
     df_result.to_csv(output_csv_path, index=False)
 
+            # FIXME: debilno
+            # """
 
-# FIXME: debilno
-# """
+
 def f(X):
     print(f"f type: {type(X)}")
     # print(X)
