@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import pandas as pd
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
@@ -28,12 +29,17 @@ pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 pdb_inference_dir = config['pdb_inference_dir']
 pdb_demo_dir = config['pdb_demo_dir']
 
+graph_type = config['graph_type']
 graph_dir = config['graph_dir']
 demo_graph_dir = config['demo_graph_dir']
 inference_dir = config['inference_dir']
 model_dir = config['model_dir']
 categories_dir = config['categories_dir']
 visualization_dir = config['visualization_dir']
+
+cyclic_csv_dir = config['cyclic_csv_dir']
+cyclic_targets_dir = config['cyclic_targets_dir']
+cyclic_graph_dir = config['cyclic_graph_dir']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
 # generation
@@ -50,27 +56,43 @@ def check_and_generate_targets():
 
 
 def generate_graphs_and_categories():
-    if demo_run.lower() == "y":
-        if not os.listdir(demo_graph_dir):
-            [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
-             os.listdir(pdb_demo_dir)]
-            logging.info("Generated demo graphs")
+    if graph_type == "molecule":
+        monomers = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Monomer_All.csv"))
+        peptide_data = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Peptide_Shape_Circle.csv"))
 
-            # Generate graph categories
-            gu.generate_categories(demo_graph_dir, categories_dir)
-            logging.info("Generated graph categories")
+        if not os.listdir(cyclic_targets_dir):
+            fu.generate_SMILES(monomers, peptide_data)
+            logging.info("Generated cyclic peptide SMILES")
+
+        if not os.listdir(cyclic_graph_dir):
+            fu.create_folder(cyclic_graph_dir)
+            cyclic_peptides = pd.read_csv(os.path.join(cyclic_targets_dir, "cyclic_peptides.csv"))
+
+            for _, row in cyclic_peptides.iterrows():
+                gu.generate_molecule_graph(row, cyclic_graph_dir)
+            logging.info("Generated cyclic peptide graphs")
     else:
-        if not os.listdir(graph_dir):
-            [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
-             os.listdir(pdb_catalytic_dir)]
-            logging.info("Generated catalytic graphs")
+        if demo_run.lower() == "y":
+            if not os.listdir(demo_graph_dir):
+                [gu.generate_residue_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
+                 os.listdir(pdb_demo_dir)]
+                logging.info("Generated demo graphs")
 
-            [gu.generate_graph(pdb_non_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
-             os.listdir(pdb_non_catalytic_dir)]
-            logging.info("Generated non-catalytic graphs")
+                # Generate graph categories
+                gu.generate_categories(demo_graph_dir, categories_dir)
+                logging.info("Generated graph categories")
+        else:
+            if not os.listdir(graph_dir):
+                [gu.generate_residue_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
+                 os.listdir(pdb_catalytic_dir)]
+                logging.info("Generated catalytic graphs")
 
-            gu.generate_categories(graph_dir, categories_dir)
-            logging.info("Generated graph categories")
+                [gu.generate_residue_graph(pdb_non_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
+                 os.listdir(pdb_non_catalytic_dir)]
+                logging.info("Generated non-catalytic graphs")
+
+                gu.generate_categories(graph_dir, categories_dir)
+                logging.info("Generated graph categories")
 
 
 def load_graphs_and_labels():
@@ -82,7 +104,7 @@ def load_graphs_and_labels():
 
 def generate_inference_graphs():
     if not os.listdir(inference_dir):
-        [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
+        [gu.generate_residue_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
          os.listdir(pdb_inference_dir)]
         logging.info("Generated inference graphs")
 

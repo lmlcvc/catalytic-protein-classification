@@ -16,8 +16,12 @@ import logging
 from graphein.protein.config import ProteinGraphConfig
 from graphein.protein.edges.atomic import add_atomic_edges
 from graphein.protein import add_peptide_bonds, add_hydrogen_bond_interactions
-from graphein.protein.graphs import construct_graph
 from graphein.protein.visualisation import plotly_protein_structure_graph
+from graphein.molecule.config import MoleculeGraphConfig
+from graphein.molecule import atom_type_one_hot, atomic_mass, degree, total_degree, total_valence, explicit_valence, implicit_valence, num_explicit_h, num_implicit_h, total_num_h, num_radical_electrons, formal_charge, hybridization, is_ring, is_isotope, is_aromatic, chiral_tag, add_bond_type, bond_is_aromatic, bond_is_conjugated, bond_stereo
+
+import graphein.protein.graphs as gp
+import graphein.molecule.graphs as gm
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -41,6 +45,37 @@ if graph_type == "residue":
 elif graph_type == "atom":
     graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
     graphein_config = ProteinGraphConfig(**graphein_params_to_change)
+elif graph_type == "molecule":
+    graphein_params_to_change = {
+        "add_hs": True,
+        "node_metadata_functions": [
+            atom_type_one_hot,
+            atomic_mass,
+            degree,
+            total_degree,
+            total_valence,
+            explicit_valence,
+            implicit_valence,
+            num_explicit_h,
+            num_implicit_h,
+            total_num_h,
+            num_radical_electrons,
+            formal_charge,
+            hybridization,
+            is_aromatic,
+            is_isotope,
+            is_ring,
+            chiral_tag,
+        ],
+
+        "edge_metadata_functions": [
+            add_bond_type,
+            bond_is_aromatic,
+            bond_is_conjugated,
+            bond_stereo
+        ]
+    }
+    graphein_config = MoleculeGraphConfig()
 
 graphein_config.dict()
 
@@ -105,7 +140,7 @@ def prepare_edges(edges):
     return edges
 
 
-def generate_graph(source_directory, entry, output_directory):
+def generate_residue_graph(source_directory, entry, output_directory):
     with open(os.path.join(file_list_dir, "non_duplicate_list.txt")) as f:
         entries = f.read().split('\n')
         if entry not in entries:
@@ -114,7 +149,7 @@ def generate_graph(source_directory, entry, output_directory):
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
 
     try:
-        graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+        graph = gp.construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
         return
@@ -130,6 +165,27 @@ def generate_graph(source_directory, entry, output_directory):
 
     nodes.to_csv(os.path.join(output_directory, f"{entry}_nodes.csv"))
     edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
+
+
+def generate_molecule_graph(cycpept, output_directory):
+    entry = cycpept.ID
+    smiles = cycpept.SMILES
+
+    try:
+        graph = gm.construct_graph(config=graphein_config, smiles=smiles)
+    except:
+        logging.error(f"Entry {entry} with SMILES {smiles} failed to transform to graph")
+        return
+
+    nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+    edges = nx.to_pandas_edgelist(graph)
+
+    # TODO: make the data make sense
+    # nodes = prepare_nodes(nodes)
+    # edges = prepare_edges(edges)
+
+    nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry}_nodes.csv"))
+    edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry}_edges.csv"))
 
 
 def standardise_category(category):

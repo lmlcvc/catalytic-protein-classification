@@ -1,4 +1,5 @@
 import os
+import ast
 import configparser
 import pandas as pd
 import warnings
@@ -15,6 +16,8 @@ file_list_dir = config['file_list_dir']
 
 pdb_catalytic_dir = config['pdb_catalytic_dir']
 pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
+
+cyclic_targets_dir = config['cyclic_targets_dir']
 
 
 def create_folder(output_directory):
@@ -214,3 +217,27 @@ def generate_ground_truth(pdb_source_directory):
     create_folder(targets_dir)
     targets_file = open(os.path.join(targets_dir, "inference_truth.txt"), "w")
     targets_file.write("\n".join(line for line in lines_filtered))
+
+
+def generate_SMILES(monomer_df, cycpep_df):
+    """
+    Generate file with full SMILES and permeability values for each cyclic peptide
+    """
+    smiles_df = pd.DataFrame(columns=['ID', 'SMILES', 'permeability'])
+
+    monomer_map = pd.Series(monomer_df.CXSMILES.values, index=monomer_df.Symbol).to_dict()
+
+    for _, row in cycpep_df.iterrows():
+        smiles = ""
+        seq = ast.literal_eval(row.Sequence)
+        for aa in seq:
+            smiles += monomer_map[aa]
+        # Doesn't work well, needs to be smarter, take into account atom type
+        # Doesn't work at all with CXSMILES
+        # smiles = smiles[0] + '0' + smiles[1:] + '0' # make a loop from the whole sequence
+
+        smiles_df = smiles_df.append({'ID': row.CycPeptMPDB_ID, 'SMILES': smiles, 'permeability': row.Permeability},
+                                     ignore_index=True)
+
+    create_folder(cyclic_targets_dir)
+    smiles_df.to_csv(os.path.join(cyclic_targets_dir, "cyclic_peptides.csv"), index=False)
