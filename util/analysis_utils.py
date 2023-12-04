@@ -2,14 +2,12 @@ import configparser
 import csv
 import json
 import os
-from collections import Counter
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 import shap
 import stellargraph
-import lime
 import torch
 import torch_geometric
 from matplotlib import pyplot as plt
@@ -76,7 +74,6 @@ def calc_least_frequent(data):
     return ';'.join(indices)
 
 
-# TODO: class aggregation
 def class_aggregation(feature_ranks, dest_dir, mode):
     if mode not in ["positive", "negative", "all"]:
         raise ValueError("Class aggregation mode must be 'positive', 'negative' or 'all'.")
@@ -142,7 +139,7 @@ def feature_correlations(log_path):
     correlation_matrix = df.corr()
 
     # Visualize the correlation matrix as a heatmap
-    # TODO: move to vu and define plot paths; if useful
+    # move to vu and define plot paths; if useful
     plt.figure(figsize=(8, 6))
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
     plt.title('Feature Correlations')
@@ -157,17 +154,20 @@ def aa_freq_analysis(predictions, out_dir):
         aas_by_protein = json.load(json_file)
 
     for label, prediction, true_class in predictions:
-        for aa in aas_by_protein[label.strip(".pdb")]["unique_aas"]:
-            if round(prediction[0]) == round(true_class):
-                if round(true_class) == 1:
-                    aa_freq_data[aa]["pred_pos_correct"] += 1
+        if label.strip(".pdb") in aas_by_protein:
+            for aa in aas_by_protein[label.strip(".pdb")]["unique_aas"]:
+                if round(prediction[0]) == round(true_class):
+                    if round(true_class) == 1:
+                        aa_freq_data[aa]["pred_pos_correct"] += 1
+                    else:
+                        aa_freq_data[aa]["pred_neg_correct"] += 1
                 else:
-                    aa_freq_data[aa]["pred_neg_correct"] += 1
-            else:
-                if round(true_class) == 1:
-                    aa_freq_data[aa]["pred_pos_incorrect"] += 1
-                else:
-                    aa_freq_data[aa]["pred_neg_incorrect"] += 1
+                    if round(true_class) == 1:
+                        aa_freq_data[aa]["pred_pos_incorrect"] += 1
+                    else:
+                        aa_freq_data[aa]["pred_neg_incorrect"] += 1
+        else:
+            print(f"Skipping {label} due to misformated input")  # FIXME: should not be happening
 
     json_file_path = os.path.join(out_dir, "aa_freqs.json")
     with open(json_file_path, 'w') as json_file:
@@ -179,7 +179,8 @@ def extract_popular_aas(run_dir, top_n=5):
         aa_freq_data = json.load(json_file)
 
     # Create lists to store data
-    amino_acids = []
+    amino_acids_pos = []
+    amino_acids_neg = []
     popularity_ratios_pos = []
     popularity_ratios_neg = []
     correctness_percentages_pos = []
@@ -188,45 +189,49 @@ def extract_popular_aas(run_dir, top_n=5):
     # Calculate popularity ratios and correctness percentages
     for aa, data in aa_freq_data.items():
         # Calculate popularity ratio in prediction
-        total_pos = int(data["pred_pos_correct"]) + int(data["pred_pos_incorrect"])
-        total_neg = int(data["pred_neg_correct"]) + int(data["pred_neg_incorrect"])
-        total_preds = total_pos + total_neg
+        tp = float(data["pred_pos_correct"])
+        tn = float(data["pred_neg_correct"])
+        fn = float(data["pred_neg_incorrect"])
+        fp = float(data["pred_pos_incorrect"])
+        pred_pos = tp + fn
+        pred_neg = tn + fp
+        total_preds = pred_pos + pred_neg
 
         # skip the proteins inference wasn't done on
-        if total_pos == 0 and total_neg == 0:
+        if pred_pos == 0 and pred_neg == 0:
             continue
-        else:
-            amino_acids.append(aa)
 
-        if total_pos > 0:
-            expected_ratio = total_pos / (total_pos + total_neg)  # expected ratio in a balanced dataset
-            pos_ratio = total_pos / total_preds  # observed ratio
+        if pred_pos > 0:
+            expected_ratio = pred_pos / total_preds  # expected ratio in a balanced dataset
+            pos_ratio = tp / total_preds  # observed ratio
 
             normalised_pos_ratio = round(pos_ratio / expected_ratio, 2)
-            correctness_percentage_pos = (data["pred_pos_correct"] / total_pos) * 100 if total_pos > 0 else 0
+            correctness_percentage_pos = round((data["pred_pos_correct"] / pred_pos) * 100, 2) if pred_pos > 0 else 0
 
+            amino_acids_pos.append(aa)
             popularity_ratios_pos.append(normalised_pos_ratio)
             correctness_percentages_pos.append(correctness_percentage_pos)
 
-        if total_neg > 0:
-            expected_ratio = total_neg / (total_pos + total_neg)
-            neg_ratio = total_neg / total_preds
+        if pred_neg > 0:
+            expected_ratio = pred_neg / total_preds
+            neg_ratio = tn / total_preds
 
             normalised_neg_ratio = round(neg_ratio / expected_ratio, 2)
-            correctness_percentage_neg = (data["pred_neg_correct"] / total_neg) * 100 if total_neg > 0 else 0
+            correctness_percentage_neg = round((data["pred_neg_correct"] / pred_neg) * 100, 2) if pred_neg > 0 else 0
 
+            amino_acids_neg.append(aa)
             popularity_ratios_neg.append(normalised_neg_ratio)
             correctness_percentages_neg.append(correctness_percentage_neg)
 
     df_pos = pd.DataFrame({
-        'amino_acid': amino_acids,
+        'amino_acid': amino_acids_pos,
         'popularity_ratio': popularity_ratios_pos,
         'correctness_percentage': correctness_percentages_pos,
         'prediction_type': 'positive'
     })
 
     df_neg = pd.DataFrame({
-        'amino_acid': amino_acids,
+        'amino_acid': amino_acids_neg,
         'popularity_ratio': popularity_ratios_neg,
         'correctness_percentage': correctness_percentages_neg,
         'prediction_type': 'negative'
@@ -255,17 +260,10 @@ def extract_popular_aas(run_dir, top_n=5):
     output_csv_path = os.path.join(run_dir, "amino_acids", "popularity_rankings.csv")
     df_result.to_csv(output_csv_path, index=False)
 
-            # FIXME: debilno
-            # """
 
-
-def f(X):
-    print(f"f type: {type(X)}")
-    # print(X)
-    data = X[0][0]
-    # print(data)
-    print(f"data type: {type(data)}")
-    # FIXME: posebno debilno
+def f(x):
+    print(f"f type: {type(x)}")
+    data = x[0][0]
     with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
         model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
 
@@ -277,7 +275,7 @@ def perform_shap(model, inference_tensors, plot_path):
     SHAP values assign a value to each feature for a particular prediction, indicating its contribution to that prediction
     """
 
-    # TODO: Will this make a new prediction that needn't be the same as the inference one?
+    # Will this make a new prediction that needn't be the same as the inference one?
 
     # tensor_array = inference_tensors.to_numpy()
 
@@ -289,7 +287,7 @@ def perform_shap(model, inference_tensors, plot_path):
     # graph extraction attempt 2
     # same as extracting from nx
     graphs_from_generator = [np.squeeze(inference_tensors.__getitem__(idx)[0][0], axis=0) for idx in
-                             range(3)]  # TODO: ne hardkodirati 3
+                             range(3)]  # bolje ne hardkodirati 3
     graph_shapes = [graph.shape for graph in graphs_from_generator]
     largest_shape = max(graph_shapes, key=lambda x: np.prod(x))
 
@@ -381,7 +379,7 @@ def perform_lime(model, inference_graphs, plot_path):
     x = list(range(data.num_node_features))
     plt.bar(x, coefs, width=5.0)
     plt.xlabel('Feature Index')
-    plt.ylabel(r'$\beta$');
+    plt.ylabel(r'$\beta$')
 
     print(f'The {np.argmax(coefs)}-th feature is the most important.')
 
