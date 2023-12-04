@@ -254,24 +254,27 @@ def generate_aa_json():
     amino_acids_freq_data = {}
 
     for protein_id, data in protein_data.items():
-        true_class = data["true_class"]
-        unique_aas = data["unique_aas"]
+        if "true_class" in data and "unique_aas" in data:
+            true_class = data["true_class"]
+            unique_aas = data["unique_aas"]
 
-        for amino_acid in unique_aas:
-            if amino_acid not in amino_acids_freq_data.keys():
-                amino_acids_freq_data[amino_acid] = {
-                    "true_pos": 0,
-                    "true_neg": 0,
-                    "pred_pos_correct": 0,
-                    "pred_pos_incorrect": 0,
-                    "pred_neg_correct": 0,
-                    "pred_neg_incorrect": 0
-                }
+            for amino_acid in unique_aas:
+                if amino_acid not in amino_acids_freq_data.keys():
+                    amino_acids_freq_data[amino_acid] = {
+                        "true_pos": 0,
+                        "true_neg": 0,
+                        "pred_pos_correct": 0,
+                        "pred_pos_incorrect": 0,
+                        "pred_neg_correct": 0,
+                        "pred_neg_incorrect": 0
+                    }
 
-            if true_class == 1:
-                amino_acids_freq_data[amino_acid]["true_pos"] += 1
-            elif true_class == 0:
-                amino_acids_freq_data[amino_acid]["true_neg"] += 1
+                if true_class == 1:
+                    amino_acids_freq_data[amino_acid]["true_pos"] += 1
+                elif true_class == 0:
+                    amino_acids_freq_data[amino_acid]["true_neg"] += 1
+        else:
+            print(f"Skipping {protein_id} due to misformated data")
 
     json_file_path = os.path.join(aas_dir, "aa_freqs_init.json")
     with open(json_file_path, 'w') as json_file:
@@ -284,20 +287,13 @@ def generate_aa_frequencies():
 
     # FIXME: ensure that targets.txt matches run mode (demo vs real)
 
-    training_targets = os.path.join(targets_dir, "targets.txt")
     inference_targets = os.path.join(targets_dir, "inference_truth.txt")
 
     # match protein to true class
-    update_protein_classification(training_targets, protein_classification)
     update_protein_classification(inference_targets, protein_classification)
 
     # match unique AAs to each protein
     if "aas_by_protein.json" not in os.listdir(aas_dir):
-        if demo_run.lower() == "y":
-            get_aas_by_protein(protein_classification, pdb_demo_dir)
-        else:
-            get_aas_by_protein(protein_classification, pdb_catalytic_dir)
-            get_aas_by_protein(protein_classification, pdb_non_catalytic_dir)
         get_aas_by_protein(protein_classification, pdb_inference_dir)
 
         json_file_path = os.path.join(aas_dir, "aas_by_protein.json")
