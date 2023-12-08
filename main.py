@@ -270,10 +270,5 @@ if __name__ == "__main__":
                         os.path.join(analysis_run_dir, "amino_acids"))
     au.extract_popular_aas(analysis_run_dir)
 
-    # shap analysis data
-    # inference_data_series = pd.Series([inference_tensors])
-    # au.perform_shap(model, inference_tensors, os.path.join(shap_run_dir, f"shap.png"))
-    #  au.perform_lime(model, inference_graphs, os.path.join(shap_run_dir, f"shap.png"))
-
     vu.evaluate_model(binary_predictions, inference_labels)
     vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
