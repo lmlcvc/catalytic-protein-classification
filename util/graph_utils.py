@@ -18,7 +18,9 @@ from graphein.protein.edges.atomic import add_atomic_edges
 from graphein.protein import add_peptide_bonds, add_hydrogen_bond_interactions
 from graphein.protein.visualisation import plotly_protein_structure_graph
 from graphein.molecule.config import MoleculeGraphConfig
-from graphein.molecule import atom_type_one_hot, atomic_mass, degree, total_degree, total_valence, explicit_valence, implicit_valence, num_explicit_h, num_implicit_h, total_num_h, num_radical_electrons, formal_charge, hybridization, is_ring, is_isotope, is_aromatic, chiral_tag, add_bond_type, bond_is_aromatic, bond_is_conjugated, bond_stereo
+from graphein.molecule import atom_type_one_hot, atomic_mass, degree, total_degree, total_valence, explicit_valence, \
+    implicit_valence, num_explicit_h, num_implicit_h, total_num_h, num_radical_electrons, formal_charge, hybridization, \
+    is_ring, is_isotope, is_aromatic, chiral_tag, add_bond_type, bond_is_aromatic, bond_is_conjugated, bond_stereo
 
 import graphein.protein.graphs as gp
 import graphein.molecule.graphs as gm
@@ -140,6 +142,50 @@ def prepare_edges(edges):
     return edges
 
 
+def prepare_nodes_molecular(nodes):
+    atom_types = ['C', 'H', 'O', 'N', 'F', 'P', 'S', 'Cl', 'Br', 'I', 'B']
+    atoms = nodes['rdmol_atom']
+
+    nodes['mass'] = atoms.apply(lambda x: x.GetMass())
+    nodes['degree'] = atoms.apply(lambda x: x.GetDegree())
+    nodes['total_degree'] = atoms.apply(lambda x: x.GetTotalDegree())
+    nodes['total_valence'] = atoms.apply(lambda x: x.GetTotalValence())
+    nodes['explicit_valence'] = atoms.apply(lambda x: x.GetExplicitValence())
+    nodes['implicit_valence'] = atoms.apply(lambda x: x.GetImplicitValence())
+    nodes['num_explicit_h'] = atoms.apply(lambda x: x.GetNumExplicitHs())
+    nodes['num_implicit_h'] = atoms.apply(lambda x: x.GetNumImplicitHs())
+    nodes['total_num_h'] = atoms.apply(lambda x: x.GetTotalNumHs())
+    nodes['num_radical_electrons'] = atoms.apply(lambda x: x.GetNumRadicalElectrons())
+    nodes['formal_charge'] = atoms.apply(lambda x: x.GetFormalCharge())
+    nodes['hybridization'] = atoms.apply(lambda x: x.GetHybridization())
+    nodes['is_aromatic'] = atoms.apply(lambda x: int(x.GetIsAromatic() is True))
+    nodes['is_isotope'] = atoms.apply(lambda x: x.GetIsotope())
+    nodes['is_ring'] = atoms.apply(lambda x: int(x.IsInRing() is True))
+    nodes['chiral_tag'] = atoms.apply(lambda x: x.GetChiralTag())
+
+    for idx, atom_type in enumerate(atom_types):
+        nodes[f'is_{atom_type}'] = nodes['atom_type_one_hot'].apply(lambda x: x[idx])
+
+    # remove unnecessary columns
+    nodes = nodes.drop(['element', 'coords', 'rdmol_atom', 'atom_type_one_hot'], axis=1)
+
+    return nodes
+
+
+def prepare_edges_molecular(edges):
+    bonds = edges['bond']
+
+    edges['bond_type'] = bonds.apply(lambda x: x.GetBondType())
+    edges['bond_is_aromatic'] = bonds.apply(lambda x: int(x.GetIsAromatic() is True))
+    edges['bond_is_conjugated'] = bonds.apply(lambda x: int(x.GetIsConjugated() is True))
+    edges['bond_stereo'] = bonds.apply(lambda x: x.GetStereo())
+
+    # remove unnecessary columns
+    edges = edges.drop(['kind', 'bond'], axis=1)
+
+    return edges
+
+
 def generate_residue_graph(source_directory, entry, output_directory):
     with open(os.path.join(file_list_dir, "non_duplicate_list.txt")) as f:
         entries = f.read().split('\n')
@@ -180,9 +226,8 @@ def generate_molecule_graph(cycpept, output_directory):
     nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
     edges = nx.to_pandas_edgelist(graph)
 
-    # TODO: make the data make sense
-    # nodes = prepare_nodes(nodes)
-    # edges = prepare_edges(edges)
+    nodes = prepare_nodes_molecular(nodes)
+    edges = prepare_edges_molecular(edges)
 
     nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry}_nodes.csv"))
     edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry}_edges.csv"))
