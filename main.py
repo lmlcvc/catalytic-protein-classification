@@ -1,3 +1,5 @@
+import csv
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -247,6 +249,16 @@ if __name__ == "__main__":
         feature_importance = np.mean(np.abs(node_gradients[0].numpy()), axis=0)
         feature_ranking = np.argsort(feature_importance)[::-1]
 
+        ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
+
+        with open(ranks_log_filepath, mode='a', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+
+            if os.path.getsize(ranks_log_filepath) == 0:
+                writer.writerow(
+                    ["Residue name", "Residue number", "B-factor", "X coordinate", "Y coordinate", "Z coordinate"])
+            writer.writerow(list(feature_ranking))
+
         # Print feature importance ranking
         features_ranked = []
         for rank, feature_index in enumerate(feature_ranking):
@@ -261,6 +273,9 @@ if __name__ == "__main__":
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
     au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
     au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
+
+    # Correlation matrix of feature ranking in inference
+    vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
     # Visualize the saliency maps and save them as images
     vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))

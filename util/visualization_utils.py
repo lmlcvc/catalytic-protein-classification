@@ -1,12 +1,14 @@
 import os
 
 import numpy as np
+import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 import tensorflow as tf
 import configparser
+import seaborn as sns
 
 import util.file_utils as fu
 
@@ -69,7 +71,7 @@ def visualize_node_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.yticks(range(len(node_feature_names)), node_feature_names)
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -207,3 +209,20 @@ def save_feature_rankings(feature_rankings, filename):
 
     rankings_file = open(filename, "w")
     rankings_file.write("\n".join(line for line in lines))
+
+
+def feature_correlations(log_path, out_dir):
+    """
+    TODO: more detail
+    Analyse correlations between important features.
+    See if there are features that tend to be important together.
+    This might indicate that certain sets of features are more informative for the model.
+    """
+    df = pd.read_csv(log_path)
+    correlation_matrix = df.corr()
+
+    # Visualize the correlation matrix as a heatmap
+    plt.figure(figsize=(8, 8))
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, annot_kws={"size": 8})
+    plt.title('Feature Correlations')
+    plt.savefig(os.path.join(out_dir, 'correlation.png'))

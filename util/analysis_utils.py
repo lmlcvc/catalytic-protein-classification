@@ -76,7 +76,6 @@ def class_aggregation(feature_ranks, dest_dir, mode):
     fu.create_folder(feature_dir)
 
     feature_rank_analysis(feature_ranks, feature_dir, mode)
-    feature_correlations(feature_dir, mode)
 
 
 def feature_rank_analysis(feature_ranks, dest_dir, run_mode):
@@ -128,24 +127,6 @@ def plot_feature_analysis(feature, rank_occurrences, mean, median, dest_dir):
     plt.legend()
     filepath = os.path.join(dest_dir, f"{feature}.png")
     plt.savefig(filepath)
-
-
-def feature_correlations(feature_dir, mode):
-    """
-    TODO: more detail
-    Analyse correlations between important features.
-    See if there are features that tend to be important together.
-    This might indicate that certain sets of features are more informative for the model.
-    """
-    log_path = os.path.join(feature_dir, f"feature_aggregation_{mode}.csv")
-    df = pd.read_csv(log_path)
-    correlation_matrix = df.corr()
-
-    # Visualize the correlation matrix as a heatmap
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
-    plt.title('Feature Correlations')
-    plt.savefig(os.path.join(feature_dir, 'correlation.png'))
 
 
 def aa_freq_analysis(predictions, out_dir):
