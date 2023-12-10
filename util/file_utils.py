@@ -255,24 +255,17 @@ def generate_aa_json():
 
     for protein_id, data in protein_data.items():
         if "true_class" in data and "unique_aas" in data:
-            true_class = data["true_class"]
             unique_aas = data["unique_aas"]
 
             for amino_acid in unique_aas:
                 if amino_acid not in amino_acids_freq_data.keys():
                     amino_acids_freq_data[amino_acid] = {
-                        "true_pos": 0,
-                        "true_neg": 0,
-                        "pred_pos_correct": 0,
-                        "pred_pos_incorrect": 0,
-                        "pred_neg_correct": 0,
-                        "pred_neg_incorrect": 0
+                        "true_positives": 0,
+                        "false_positives": 0,
+                        "true_negatives": 0,
+                        "false_negatives": 0
                     }
 
-                if true_class == 1:
-                    amino_acids_freq_data[amino_acid]["true_pos"] += 1
-                elif true_class == 0:
-                    amino_acids_freq_data[amino_acid]["true_neg"] += 1
         else:
             print(f"Skipping {protein_id} due to misformated data")
 
