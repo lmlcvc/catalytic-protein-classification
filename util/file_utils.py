@@ -17,6 +17,7 @@ file_list_dir = config['file_list_dir']
 pdb_catalytic_dir = config['pdb_catalytic_dir']
 pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 
+cyclic_concat_dir = config['cyclic_concat_dir']
 cyclic_targets_dir = config['cyclic_targets_dir']
 
 
@@ -239,5 +240,31 @@ def generate_SMILES(monomer_df, cycpep_df):
         smiles_df = smiles_df.append({'ID': row.CycPeptMPDB_ID, 'SMILES': smiles, 'permeability': row.Permeability},
                                      ignore_index=True)
 
+    create_folder(cyclic_concat_dir)
+    smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"), index=False)
+
+
+def generate_cyclic_targets(peptide_df, output_file_name):
+    """
+    Generate files with binary target values for each protein entry ID
+        0 - does not permeate
+        1 - permeates
+    """
+    targets_df = pd.DataFrame(columns=['index', 'SMILES', 'label'])
+
+    for _, row in peptide_df.iterrows():
+        targets_df = targets_df.append({'index': row.ID, 'SMILES': row.SMILES, 'label': 1 if row.permeability > -6 else 0},
+                                       ignore_index=True)
+
     create_folder(cyclic_targets_dir)
-    smiles_df.to_csv(os.path.join(cyclic_targets_dir, "cyclic_peptides.csv"), index=False)
+    targets_df.to_csv(os.path.join(cyclic_targets_dir, output_file_name), index=False)
+
+
+def training_inference_split(peptide_df, inference_percentage):
+    inference_rows = int(len(peptide_df) * inference_percentage)
+
+    inference_df = peptide_df.sample(n=inference_rows).sort_values(by='ID')
+    training_df = peptide_df.drop(inference_df.index).sort_values(by='ID')
+
+    return training_df, inference_df
+

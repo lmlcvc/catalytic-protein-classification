@@ -15,13 +15,44 @@ config.read('config.ini')
 config = config['default']
 
 model_dir = config['model_dir']
+graph_type = config['graph_type']
 
-node_feature_names = ["Residue name",
-                      "Residue number",
-                      "B-factor",
-                      "X coordinate",
-                      "Y coordinate",
-                      "Z coordinate"]
+
+if graph_type == 'molecule':
+    node_feature_names = ["Atomic Mass",
+                          "Degree",
+                          "Total degree",
+                          "Total valence",
+                          "Explicit valence",
+                          "Implicit valence",
+                          "Number of explicit H",
+                          "Number of implicit H",
+                          "Total number of H",
+                          "Number of radical electrons",
+                          "Formal charge",
+                          "Hybridization",
+                          "Is Aromatic",
+                          "Is Isotope",
+                          "Is Ring",
+                          "Chiral tag",
+                          "Is C",
+                          "Is H",
+                          "Is O",
+                          "Is N",
+                          "Is F",
+                          "Is P",
+                          "Is S",
+                          "Is Cl",
+                          "Is Br",
+                          "Is I",
+                          "Is B",]
+else:
+    node_feature_names = ["Residue name",
+                          "Residue number",
+                          "B-factor",
+                          "X coordinate",
+                          "Y coordinate",
+                          "Z coordinate"]
 
 
 @tf.function

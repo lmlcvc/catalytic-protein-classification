@@ -38,8 +38,11 @@ categories_dir = config['categories_dir']
 visualization_dir = config['visualization_dir']
 
 cyclic_csv_dir = config['cyclic_csv_dir']
+cyclic_concat_dir = config['cyclic_concat_dir']
 cyclic_targets_dir = config['cyclic_targets_dir']
 cyclic_graph_dir = config['cyclic_graph_dir']
+cyclic_inference_dir = config['cyclic_inference_dir']
+cyclic_inference_split = config['cyclic_inference_split']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
 # generation
@@ -47,26 +50,35 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def check_and_generate_targets():
-    if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
-        if demo_run.lower() == "y":
-            fu.generate_targets([pdb_demo_dir])
-        else:
-            fu.generate_targets([pdb_catalytic_dir, pdb_non_catalytic_dir])
-        logging.info("Finished target generation")
-
-
-def generate_graphs_and_categories():
     if graph_type == "molecule":
         monomers = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Monomer_All.csv"))
         peptide_data = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Peptide_Shape_Circle.csv"))
 
-        if not os.listdir(cyclic_targets_dir):
+        if not os.listdir(cyclic_concat_dir):
             fu.generate_SMILES(monomers, peptide_data)
             logging.info("Generated cyclic peptide SMILES")
 
+        if not os.listdir(cyclic_targets_dir):
+            cyclic_peptides = pd.read_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"))
+            training_peptides, inference_peptides = fu.training_inference_split(cyclic_peptides, float(cyclic_inference_split))
+
+            fu.generate_cyclic_targets(training_peptides, "ground_truth.csv")
+            fu.generate_cyclic_targets(inference_peptides, "inference_truth.csv")
+
+    else:
+        if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
+            if demo_run.lower() == "y":
+                fu.generate_targets([pdb_demo_dir])
+            else:
+                fu.generate_targets([pdb_catalytic_dir, pdb_non_catalytic_dir])
+            logging.info("Finished target generation")
+
+
+def generate_graphs_and_categories():
+    if graph_type == "molecule":
         if not os.listdir(cyclic_graph_dir):
             fu.create_folder(cyclic_graph_dir)
-            cyclic_peptides = pd.read_csv(os.path.join(cyclic_targets_dir, "cyclic_peptides.csv"))
+            cyclic_peptides = pd.read_csv(os.path.join(cyclic_targets_dir, "ground_truth.csv"))
 
             for _, row in cyclic_peptides.iterrows():
                 gu.generate_molecule_graph(row, cyclic_graph_dir)
@@ -96,17 +108,29 @@ def generate_graphs_and_categories():
 
 
 def load_graphs_and_labels():
-    if demo_run.lower() == "y":
-        return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
+    if graph_type == "molecule":
+        return gu.load_cyclic_graphs(cyclic_graph_dir), gu.load_cyclic_graph_labels()
     else:
-        return gu.load_graphs(graph_dir), gu.load_graph_labels()
+        if demo_run.lower() == "y":
+            return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
+        else:
+            return gu.load_graphs(graph_dir), gu.load_graph_labels()
 
 
 def generate_inference_graphs():
-    if not os.listdir(inference_dir):
-        [gu.generate_residue_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
-         os.listdir(pdb_inference_dir)]
-        logging.info("Generated inference graphs")
+    if graph_type == "molecule":
+        if not os.listdir(cyclic_inference_dir):
+            fu.create_folder(cyclic_inference_dir)
+            cyclic_peptides = pd.read_csv(os.path.join(cyclic_targets_dir, "inference_truth.csv"))
+
+            for _, row in cyclic_peptides.iterrows():
+                gu.generate_molecule_graph(row, cyclic_inference_dir)
+            logging.info("Generated cyclic peptide inference graphs")
+    else:
+        if not os.listdir(inference_dir):
+            [gu.generate_residue_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
+             os.listdir(pdb_inference_dir)]
+            logging.info("Generated inference graphs")
 
 
 def load_model():
@@ -191,13 +215,20 @@ if __name__ == "__main__":
         # graphs, graph_labels = load_graphs_and_labels()
 
     # Generate and use inference graphs
-    fu.create_folder(inference_dir)
-    if not os.listdir(inference_dir):
-        generate_inference_graphs()
-    fu.generate_ground_truth(pdb_inference_dir)
-    gu.generate_categories(inference_dir, categories_dir)
-    inference_graphs = gu.load_graphs(inference_dir)
-    inference_labels = gu.load_graph_labels("inference_truth.txt")
+    if graph_type == "molecule":
+        fu.create_folder(cyclic_inference_dir)
+        if not os.listdir(cyclic_inference_dir):
+            generate_inference_graphs()
+        inference_graphs = gu.load_cyclic_graphs(cyclic_inference_dir)
+        inference_labels = gu.load_cyclic_graph_labels("inference_truth.csv")
+    else:
+        fu.create_folder(inference_dir)
+        if not os.listdir(inference_dir):
+            generate_inference_graphs()
+        fu.generate_ground_truth(pdb_inference_dir)
+        gu.generate_categories(inference_dir, categories_dir)
+        inference_graphs = gu.load_graphs(inference_dir)
+        inference_labels = gu.load_graph_labels("inference_truth.txt")
 
     # Prepare input graph data for inference
     inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
@@ -229,7 +260,7 @@ if __name__ == "__main__":
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
         print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
-              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels[i])}")
+              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels.iloc[i])}")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]

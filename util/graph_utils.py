@@ -34,6 +34,8 @@ graph_type = config['graph_type']
 
 targets_dir = config['targets_dir']
 graph_dir = config['graph_dir']
+cyclic_targets_dir = config['cyclic_targets_dir']
+cyclic_inference_dir = config['cyclic_inference_dir']
 categories_dir = config['categories_dir']
 file_list_dir = config['file_list_dir']
 use_distance_as_weight = config['use_distance_as_weight']
@@ -321,6 +323,36 @@ def load_graph_labels(filename="ground_truth.txt"):
         # ?????
         df = df.squeeze()
         return df
+
+
+def load_cyclic_graphs(source_directory):
+    graphs = []
+
+    filenames = sorted(os.listdir(source_directory))
+    filename_pairs = [filenames[i: i + 2] for i in range(0, len(filenames), 2)]
+
+    for edges, nodes in filename_pairs:
+        edges_id = edges.split('_')
+        nodes_id = nodes.split('_')
+        if nodes[1] != edges[1]:
+            raise f"IDs for (nodes, edges) pair do not match: {nodes}, {edges}"
+
+        edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)
+        nodes_df = pd.read_csv(os.path.join(source_directory, nodes), index_col=0)
+
+        graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
+
+    return graphs
+
+
+def load_cyclic_graph_labels(filename="ground_truth.csv"):
+    labels = pd.read_csv(os.path.join(cyclic_targets_dir, filename), index_col=0)
+    labels = labels.drop("SMILES", axis=1)
+    labels["label"] = labels["label"].astype(float)  # .astype("category")
+
+    # ????? pt. 2
+    labels = labels.squeeze()
+    return labels
 
 
 def visualise_graph(graph):
