@@ -216,8 +216,8 @@ def generate_residue_graph(source_directory, entry, output_directory):
 
 
 def generate_molecule_graph(cycpept, output_directory):
-    entry = cycpept.index
-    smiles = cycpept.SMILES
+    entry = cycpept["index"]
+    smiles = cycpept["SMILES"]
 
     try:
         graph = gm.construct_graph(config=graphein_config, smiles=smiles)
