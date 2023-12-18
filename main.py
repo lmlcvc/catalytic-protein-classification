@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import tensorflow as tf
 import pandas as pd
@@ -64,6 +66,7 @@ def check_and_generate_targets():
 
             fu.generate_cyclic_targets(training_peptides, "ground_truth.csv")
             fu.generate_cyclic_targets(inference_peptides, "inference_truth.csv")
+            logging.info("Generated cyclic peptide targets")
 
     else:
         if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):

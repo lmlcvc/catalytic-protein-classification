@@ -231,8 +231,8 @@ def generate_molecule_graph(cycpept, output_directory):
     nodes = prepare_nodes_molecular(nodes)
     edges = prepare_edges_molecular(edges)
 
-    nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry}_nodes.csv"))
-    edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry}_edges.csv"))
+    nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_nodes.csv"))
+    edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_edges.csv"))
 
 
 def standardise_category(category):
@@ -332,9 +332,9 @@ def load_cyclic_graphs(source_directory):
     filename_pairs = [filenames[i: i + 2] for i in range(0, len(filenames), 2)]
 
     for edges, nodes in filename_pairs:
-        edges_id = edges.split('_')
-        nodes_id = nodes.split('_')
-        if nodes[1] != edges[1]:
+        edges_id = edges.split('_')[1]
+        nodes_id = nodes.split('_')[1]
+        if nodes_id != edges_id:
             raise f"IDs for (nodes, edges) pair do not match: {nodes}, {edges}"
 
         edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)

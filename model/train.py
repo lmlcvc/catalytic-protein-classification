@@ -59,7 +59,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
     for i, (train_index, test_index) in enumerate(stratified_folds):
         print(f"Training and evaluating on fold {i + 1} out of {folds * n_repeats}...")
         train_gen, test_gen = get_generators(
-            graph_generator, train_index, test_index, graph_labels, batch_size=5
+            graph_generator, train_index, test_index, graph_labels, batch_size=8
         )
 
         if use_dgcnn.lower() == "y":

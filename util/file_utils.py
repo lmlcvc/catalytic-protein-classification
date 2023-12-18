@@ -3,8 +3,10 @@ import ast
 import configparser
 import pandas as pd
 import warnings
+import util.cyclic_peptide_utils as cyc
 
 from biopandas.pdb import PandasPdb
+from rdkit import Chem
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -226,16 +228,15 @@ def generate_SMILES(monomer_df, cycpep_df):
     """
     smiles_df = pd.DataFrame(columns=['ID', 'SMILES', 'permeability'])
 
+    # monomer_map = pd.Series(monomer_df.replaced_SMILES.values, index=monomer_df.Symbol).to_dict()
     monomer_map = pd.Series(monomer_df.CXSMILES.values, index=monomer_df.Symbol).to_dict()
 
     for _, row in cycpep_df.iterrows():
-        smiles = ""
         seq = ast.literal_eval(row.Sequence)
-        for aa in seq:
-            smiles += monomer_map[aa]
-        # Doesn't work well, needs to be smarter, take into account atom type
-        # Doesn't work at all with CXSMILES
-        # smiles = smiles[0] + '0' + smiles[1:] + '0' # make a loop from the whole sequence
+        monomer_list = [Chem.MolFromSmiles(monomer_map[aa]) for aa in seq]
+
+        peptide = cyc.make_peptide(monomer_list)
+        smiles = Chem.MolToSmiles(peptide)
 
         smiles_df = smiles_df.append({'ID': row.CycPeptMPDB_ID, 'SMILES': smiles, 'permeability': row.Permeability},
                                      ignore_index=True)
@@ -253,7 +254,9 @@ def generate_cyclic_targets(peptide_df, output_file_name):
     targets_df = pd.DataFrame(columns=['index', 'SMILES', 'label'])
 
     for _, row in peptide_df.iterrows():
-        targets_df = targets_df.append({'index': row.ID, 'SMILES': row.SMILES, 'label': 1 if row.permeability > -6 else 0},
+        targets_df = targets_df.append({'index': f"{row.ID:04d}",
+                                        'SMILES': row.SMILES,
+                                        'label': 1 if row.permeability > -6 else 0},    # TODO: Staviti u konfiguraciju
                                        ignore_index=True)
 
     create_folder(cyclic_targets_dir)
