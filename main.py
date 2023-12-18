@@ -1,7 +1,6 @@
 import csv
 
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
@@ -205,7 +204,8 @@ if __name__ == "__main__":
     predictions = model.predict(inference_tensors)
 
     # Visualise predictions histogram
-    vu.visualise_predictions(predictions, inference_labels.to_list(), os.path.join(run_dir, "predictions"))
+    # TODO: uncomment when fixed
+    # vu.visualise_predictions(predictions, inference_labels.to_list(), os.path.join(run_dir, "predictions"))
 
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     features_ranked_negative = [[0 for j in range(inference_generator.node_features_size)] for i in
                                 range(inference_generator.node_features_size)]
 
-    fu.generate_aa_frequencies()  # TODO: if not already done
+    fu.generate_aa_frequencies()
 
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]

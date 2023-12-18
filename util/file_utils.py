@@ -248,6 +248,13 @@ def get_aas_by_protein(protein_classification, pdb_dir):
 
 
 def generate_aa_json():
+    """
+    Generate JSON representation of initial info on classes present for each AA.
+
+    observed_pos - positive class proteins from whole dataset containing given AA
+    observed_neg - negative class proteins from whole dataset containing given AA
+    true_positives, false_positives, true_negatives, false_negatives - inference correctness stats
+    """
     with open(os.path.join(aas_dir, "aas_by_protein.json"), 'r') as json_file:
         protein_data = json.load(json_file)
 
@@ -255,16 +262,23 @@ def generate_aa_json():
 
     for protein_id, data in protein_data.items():
         if "true_class" in data and "unique_aas" in data:
+            true_class = data["true_class"]
             unique_aas = data["unique_aas"]
 
             for amino_acid in unique_aas:
                 if amino_acid not in amino_acids_freq_data.keys():
                     amino_acids_freq_data[amino_acid] = {
+                        "observed_pos": 0,
+                        "observed_neg": 0,
                         "true_positives": 0,
                         "false_positives": 0,
                         "true_negatives": 0,
                         "false_negatives": 0
                     }
+            if true_class == 1:
+                amino_acids_freq_data[amino_acid]["observed_pos"] += 1
+            elif true_class == 0:
+                amino_acids_freq_data[amino_acid]["observed_neg"] += 1
 
         else:
             print(f"Skipping {protein_id} due to misformated data")
