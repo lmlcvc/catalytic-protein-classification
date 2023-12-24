@@ -1,4 +1,5 @@
 import csv
+import sys
 
 import numpy as np
 import tensorflow as tf
@@ -193,7 +194,6 @@ if __name__ == "__main__":
     run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
 
     # Initialise analysis directories
-    # TODO: move to routine if too many
     fu.create_folder(analysis_dir)
     analysis_run_dir = os.path.join(os.path.join(analysis_dir, f"{run_timestamp}"))
     os.mkdir(analysis_run_dir)
@@ -224,11 +224,13 @@ if __name__ == "__main__":
                                 range(inference_generator.node_features_size)]
 
     fu.generate_aa_frequencies()
+    ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
 
+    most_relevant_nodes = {}  # dict of protein: [nodes with the largest gradients]
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
         print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
-              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels[i])}")
+              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels[i])}\n")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]
@@ -236,10 +238,12 @@ if __name__ == "__main__":
             print(f"Skipping graph {i + 1} due to None input.")
             continue
 
-        # Gradients
+        # Gradients - extract and append to list for further analysis
         gradients = vu.get_gradients(model, inputs)
         node_gradients = gradients[0]
         edge_gradients = gradients[-1]
+
+        most_relevant_nodes[inference_labels.index[i]] = au.extract_relevant_gradients(node_gradients)
 
         # Saliency maps
         node_saliency_map = vu.calculate_node_saliency(gradients[0])
@@ -248,8 +252,6 @@ if __name__ == "__main__":
         # Feature importance ranking
         feature_importance = np.mean(np.abs(node_gradients[0].numpy()), axis=0)
         feature_ranking = np.argsort(feature_importance)[::-1]
-
-        ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
 
         with open(ranks_log_filepath, mode='a', newline='') as csv_file:
             writer = csv.writer(csv_file)
@@ -267,7 +269,10 @@ if __name__ == "__main__":
             else:
                 features_ranked_negative[feature_index][rank - 1] += 1
             features_ranked_all[feature_index][rank - 1] += 1
-            print(f"Rank {rank + 1}: Feature {feature_index}")
+
+        # Visualize the saliency maps and save them as images
+        vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
     # class-aggregated analysis
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
@@ -276,10 +281,6 @@ if __name__ == "__main__":
 
     # Correlation matrix of feature ranking in inference
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
-
-    # Visualize the saliency maps and save them as images
-    vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-    vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
     au.aa_freq_analysis(zip(os.listdir(pdb_inference_dir), binary_predictions, inference_labels),
                         os.path.join(analysis_run_dir, "amino_acids"))

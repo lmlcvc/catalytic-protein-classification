@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
+import tensorflow as tf
 from matplotlib import pyplot as plt
 
 import util.file_utils as fu
@@ -170,8 +170,8 @@ def extract_popular_aas(run_dir, top_n=5):
     for aa, data in aa_freq_data.items():
         # Inspect precision and recall for positive class, if present
         if (data['true_positives'] + data['false_negatives']) > 0:
-            precision = data['true_positives'] / (data['true_positives'] + data['false_positives'])
-            recall = data["true_positives"] / (data['true_positives'] + data['false_negatives'])
+            precision = round(data['true_positives'] / (data['true_positives'] + data['false_positives']), 2)
+            recall = round(data["true_positives"] / (data['true_positives'] + data['false_negatives']), 2)
 
             amino_acids_pos.append(aa)
             precisions.append(precision)
@@ -192,3 +192,28 @@ def extract_popular_aas(run_dir, top_n=5):
 
     output_csv_path = os.path.join(run_dir, "amino_acids", "pos_rankings.csv")
     df.to_csv(output_csv_path, index=False)
+
+
+def extract_relevant_gradients(gradients):
+    # Min-max normalisation for each tensor
+    min_values = [tf.reduce_min(tensor) for tensor in gradients]
+    max_values = [tf.reduce_max(tensor) for tensor in gradients]
+
+    normalised_tensors = [(tensor - min_val) / (max_val - min_val) for tensor, min_val, max_val in
+                          zip(gradients, min_values, max_values)]
+
+    all_gradients = pd.DataFrame(np.concatenate(normalised_tensors, axis=0))  # reshaping
+
+    # Calculate the threshold for each feature independently
+    # TODO: how to define threshold?
+    threshold_percentage = 98
+    thresholds = np.percentile(all_gradients, threshold_percentage, axis=0)
+    thresholds = thresholds.tolist()
+
+    # Extract relevant gradients for each feature
+    filtered_values = {}
+    for col_idx, threshold in enumerate(thresholds):
+        column = all_gradients[col_idx]
+        filtered_values[col_idx] = column[column > threshold].index.tolist()
+
+    return filtered_values
