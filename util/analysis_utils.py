@@ -2,6 +2,7 @@ import configparser
 import csv
 import json
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -211,9 +212,58 @@ def extract_relevant_gradients(gradients):
     thresholds = thresholds.tolist()
 
     # Extract relevant gradients for each feature
-    filtered_values = {}
+    filtered_nodes = []
     for col_idx, threshold in enumerate(thresholds):
         column = all_gradients[col_idx]
-        filtered_values[col_idx] = column[column > threshold].index.tolist()
+        filtered_nodes.append(column[column > threshold].index.tolist())
 
-    return filtered_values
+    flat_list = [item for sublist in filtered_nodes for item in sublist]
+    unique_nodes = list(set(flat_list))
+
+    return unique_nodes
+
+
+def active_site_comparison(data):
+    """
+    Args:
+        data: dict - a dictionary containing all relevant nodes per protein
+    Returns:
+
+    """
+    df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep="\s+", skip_blank_lines=True, na_values=[''])
+    df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
+    df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
+
+    inference_proteins = data.keys()
+    results = []
+    for index, row in df.iterrows():
+        protein = row['PDB_ID']
+        if protein not in inference_proteins:
+            print(f"{protein} not in inference. Skipping.")
+        else:
+            nodes_list = [node + 1 for node in data[protein]]
+            res1 = int(row['Residue_1'])
+            res2 = int(row['Residue_2'])
+            res3 = int(row['Residue_3'])
+
+            # Check if each residue is present in the nodes list
+            res1_present = res1 in nodes_list
+            res2_present = res2 in nodes_list
+            res3_present = res3 in nodes_list
+
+            # Check if all three residues are present
+            all_present = all([res1_present, res2_present, res3_present])
+
+            # Append the results to the list
+            results.append({
+                'protein': protein,
+                'res1_present': res1_present,
+                'res2_present': res2_present,
+                'res3_present': res3_present,
+                'all_res_present': all_present
+            })
+
+    results_df = pd.DataFrame(results)
+    print(results_df)
+
+    # TODO: make triad combinations and compare that
