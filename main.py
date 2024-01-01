@@ -244,7 +244,9 @@ if __name__ == "__main__":
         edge_gradients = gradients[-1]
 
         most_relevant_nodes[inference_labels.index[i]] = au.extract_relevant_gradients(node_gradients)
+        # break
 
+        # """
         # Saliency maps
         node_saliency_map = vu.calculate_node_saliency(gradients[0])
         edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
@@ -273,6 +275,13 @@ if __name__ == "__main__":
         # Visualize the saliency maps and save them as images
         vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
         vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+        # """
+
+    # Active site comparison (gradient vs. ground truth)
+    # print(most_relevant_nodes)
+    au.active_site_comparison(most_relevant_nodes, analysis_run_dir)
+    au.generate_triad_combinations(most_relevant_nodes, analysis_run_dir)
+    # sys.exit()
 
     # class-aggregated analysis
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
@@ -282,9 +291,10 @@ if __name__ == "__main__":
     # Correlation matrix of feature ranking in inference
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
-    au.aa_freq_analysis(zip(os.listdir(pdb_inference_dir), binary_predictions, inference_labels),
-                        os.path.join(analysis_run_dir, "amino_acids"))
-    au.extract_popular_aas(analysis_run_dir)
+    # Amino-acid frequency analysis
+    # au.aa_freq_analysis(zip(os.listdir(pdb_inference_dir), binary_predictions, inference_labels),
+    #                    os.path.join(analysis_run_dir, "amino_acids"))
+    # au.extract_popular_aas(analysis_run_dir)
 
-    vu.evaluate_model(binary_predictions, inference_labels)
+    vu.evaluate_model(binary_predictions, inference_labels, both_classes_present=False)
     vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))

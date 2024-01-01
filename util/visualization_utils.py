@@ -185,13 +185,13 @@ def visualize_training(histories, figsize=(10, 6), dpi=300):
     plt.close()
 
 
-def evaluate_model(predictions, labels):
+def evaluate_model(predictions, labels, both_classes_present=True):
     predictions = [prediction for sublist in predictions for prediction in sublist]
     accuracy = accuracy_score(labels, predictions)
     precision = precision_score(labels, predictions)
     recall = recall_score(labels, predictions)
     f1 = f1_score(labels, predictions)
-    roc_auc = roc_auc_score(labels, predictions)
+    roc_auc = roc_auc_score(labels, predictions) if both_classes_present else -1
 
     metric_names = ["Accuracy", "Precision", "Recall", "F1-score", "ROC AUC"]
     metric_values = [accuracy, precision, recall, f1, roc_auc]

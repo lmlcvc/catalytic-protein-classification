@@ -2,12 +2,12 @@ import configparser
 import csv
 import json
 import os
-import sys
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from matplotlib import pyplot as plt
+from itertools import combinations
 
 import util.file_utils as fu
 
@@ -32,7 +32,7 @@ def calc_mean(data):
     ranks = [data[idx] * (idx + 1) for idx in range(len(data))]
     ranks_sum = sum(ranks)
     total_count = sum(data)
-    return round(ranks_sum / total_count, 2)
+    return round(ranks_sum / total_count, 2) if total_count > 0 else -1
 
 
 def calc_median_idx(data):
@@ -49,10 +49,12 @@ def calc_stdev(data, mean):
     total_count = sum(data)
     rank_values = [rank for rank, freq in enumerate(data, 1) for _ in range(freq)]
 
-    variance = sum(
-        [(val - mean) ** 2 * freq for val, freq in zip(rank_values, data)]) / total_count
-
-    return round(np.sqrt(variance), 2)
+    if total_count > 0:
+        variance = sum(
+            [(val - mean) ** 2 * freq for val, freq in zip(rank_values, data)]) / total_count
+        return round(np.sqrt(variance), 2)
+    else:
+        return -1
 
 
 def calc_mode(data):
@@ -87,7 +89,7 @@ def feature_rank_analysis(feature_ranks, dest_dir, run_mode):
     Args:
         feature_ranks: List of rank arrays, for each feature. Numbers represent the counts of rank (index+1)
         dest_dir: Path to csv log file
-
+        run_mode: catalytic/non-catalytic/all
     """
 
     for feature, rank_occurrences in zip(node_feature_names, feature_ranks):
@@ -217,16 +219,17 @@ def extract_relevant_gradients(gradients):
         column = all_gradients[col_idx]
         filtered_nodes.append(column[column > threshold].index.tolist())
 
-    flat_list = [item for sublist in filtered_nodes for item in sublist]
+    flat_list = [(item + 1) for sublist in filtered_nodes for item in sublist]
     unique_nodes = list(set(flat_list))
 
     return unique_nodes
 
 
-def active_site_comparison(data):
+def active_site_comparison(data, output_dir):
     """
     Args:
         data: dict - a dictionary containing all relevant nodes per protein
+        output_dir: str - the directory for saving the result csv
     Returns:
 
     """
@@ -241,7 +244,7 @@ def active_site_comparison(data):
         if protein not in inference_proteins:
             print(f"{protein} not in inference. Skipping.")
         else:
-            nodes_list = [node + 1 for node in data[protein]]
+            nodes_list = data[protein]
             res1 = int(row['Residue_1'])
             res2 = int(row['Residue_2'])
             res3 = int(row['Residue_3'])
@@ -264,6 +267,21 @@ def active_site_comparison(data):
             })
 
     results_df = pd.DataFrame(results)
-    print(results_df)
+    results_df.to_csv(os.path.join(output_dir, "active_sites.csv"))
 
-    # TODO: make triad combinations and compare that
+
+def generate_triad_combinations(data, output_dir):
+    # XXX: If we go further with this approach, exclude combinations that fail triad criteria
+    with open(os.path.join(output_dir, "triad_combinations.csv"), 'w', newline='') as csvfile:
+        fieldnames = ['protein', 'res1', 'res2', 'res3']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        # Iterate over proteins and generate triad combinations
+        for protein, nodes_list in data.items():
+            # Generate all combinations of size 3
+            triad_combinations = combinations(nodes_list, 3)
+
+            # Write to CSV
+            for triad in triad_combinations:
+                writer.writerow({'protein': protein, 'res1': triad[0], 'res2': triad[1], 'res3': triad[2]})
