@@ -1,23 +1,22 @@
-import util.file_utils as fu
-
 import configparser
+import logging
 import os.path
 
-import torch
-import dgl
-import networkx as nx
+import graphein.protein.edges.distance
 import matplotlib.pyplot as plt
-import pandas as pd
+import networkx as nx
 import numpy as np
+import pandas as pd
 from biopandas.pdb import PandasPdb
-from stellargraph import StellarGraph
-import logging
-
+from graphein.protein import add_peptide_bonds, add_hydrogen_bond_interactions
 from graphein.protein.config import ProteinGraphConfig
 from graphein.protein.edges.atomic import add_atomic_edges
-from graphein.protein import add_peptide_bonds, add_hydrogen_bond_interactions
 from graphein.protein.graphs import construct_graph
-from graphein.protein.visualisation import plotly_protein_structure_graph
+from graphein.protein.edges import distance, intramolecular
+from graphein.protein.visualisation import plotly_protein_structure_graph, plot_protein_structure_graph
+from stellargraph import StellarGraph
+
+import util.file_utils as fu
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -81,6 +80,7 @@ def prepare_nodes(nodes):
     nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
     # remove unnecessary columns
+    # TODO: remove residue number
     nodes = nodes.drop(['chain_id', 'coords', 'meiler'], axis=1)
 
     # remove or transform data depending on graph type
@@ -113,8 +113,36 @@ def generate_graph(source_directory, entry, output_directory):
 
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
 
+    # TODO: new features
+    """
+     :param edge_construction_funcs: List of edge construction functions.
+        Default is ``None``.
+    :type edge_construction_funcs: List[Callable], optional
+    :param edge_annotation_funcs: List of edge annotation functions.
+        Default is ``None``.
+    :type edge_annotation_funcs: List[Callable], optional
+    """
+
     try:
-        graph = construct_graph(config=graphein_config, path=pdb_path, pdb_code=entry)
+        edge_construction_funcs = [
+            distance.add_aromatic_interactions,
+            distance.add_cation_pi_interactions,
+            distance.add_aromatic_sulphur_interactions,
+            distance.add_disulfide_interactions,
+            distance.add_hydrogen_bond_interactions,
+            distance.add_hydrophobic_interactions,
+            distance.add_ionic_interactions,
+            intramolecular.pi_stacking,
+            intramolecular.salt_bridge,
+            intramolecular.t_stacking,
+            intramolecular.van_der_waals
+        ]
+
+        graph = construct_graph(config=graphein_config,
+                                path=pdb_path,
+                                pdb_code=entry,
+                                edge_construction_funcs=edge_construction_funcs)
+
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
         return
@@ -209,7 +237,7 @@ def load_graphs(source_directory):
     return graphs
 
 
-def load_graph_labels(filename="ground_truth.txt"):
+def load_graph_labels(filename="targets.txt"):
     with open(os.path.join(targets_dir, filename), "r") as f:
         df = pd.DataFrame([[entry for entry in line.split()] for line in f])
         df.columns = ["index", "label"]
