@@ -41,7 +41,11 @@ def create_graph_classification_model_gcn(generator):
 
     # Let's create the Keras model and prepare it for training
     model = Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=Adam(0.005), loss=binary_crossentropy, metrics=["acc", "precision", "recall", "f1"])
+    model.compile(optimizer=Adam(0.005),
+                  loss=binary_crossentropy,
+                  metrics=[tf.keras.metrics.Accuracy(),
+                           tf.keras.metrics.Precision(name='precision'),
+                           tf.keras.metrics.Recall(name='recall')])
 
     return model
 

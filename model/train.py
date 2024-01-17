@@ -3,6 +3,7 @@ import csv
 import os
 
 import numpy as np
+from keras.models import clone_model
 from matplotlib import pyplot as plt
 
 from keras.callbacks import EarlyStopping
@@ -26,22 +27,17 @@ es = EarlyStopping(
 
 
 def train_fold(model, train_gen, test_gen, es, epochs):
-    print(f"train gen: {train_gen}")
-    print(f"validation data (test gen):{test_gen}")
-
     history = model.fit(
         train_gen, epochs=epochs, validation_data=test_gen, verbose=1, callbacks=[es],
     )
 
     # Accessing metrics
-    metrics = {"train_acc": history.history['acc'],
-               "val_acc": history.history['val_acc'],
+    metrics = {"train_acc": history.history['accuracy'],
+               "val_acc": history.history['val_accuracy'],
                "train_precision": history.history['precision'],
                "val_precision": history.history['val_precision'],
                "train_recall": history.history['recall'],
-               "val_recall": history.history['val_recall'],
-               "train_f1": history.history['f1'],
-               "val_f1": history.history['val_f1']}
+               "val_recall": history.history['val_recall']}
 
     # calculate performance on the test data and return along with history
     # test_metrics = model.evaluate(test_gen, verbose=1)
@@ -60,7 +56,7 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
 
     return train_gen, test_gen
 
-
+# FIXME: logging of training metrics
 def log_metrics_to_file(metrics, file_path, fold):
     is_file_empty = not os.path.isfile(file_path) or os.path.getsize(file_path) == 0
 
@@ -79,7 +75,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
     test_accs = []
     all_histories = []
     best_model = None
-    best_acc = 0.
+    best_acc = -1.
 
     stratified_folds = model_selection.RepeatedStratifiedKFold(
         n_splits=folds, n_repeats=n_repeats
@@ -98,7 +94,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
 
         history, metrics = train_fold(model, train_gen, test_gen, es, epochs)
         all_histories.append(history)
-        test_accs.append(metrics["val_acc"])
+        test_accs.append(max(metrics["val_acc"]))  # TODO: double check this max
 
         run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
         log_metrics_to_file(metrics, os.path.join(model_dir, f"{run_timestamp}.csv"), fold=i + 1)
@@ -106,9 +102,10 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
         print(f"Train set size: {len(train_index)} graphs")
         print(f"Test set size: {len(test_index)} graphs")
 
-        if metrics["val_acc"] > best_acc:
-            best_acc = metrics["val_acc"]
-            best_model = model
+        if max(metrics["val_acc"]) > best_acc:
+            best_acc = max(metrics["val_acc"])
+            best_model = clone_model(model)
+            best_model.set_weights(best_model.get_weights())
 
     print(
         f"Accuracy over all folds mean: {np.mean(test_accs) * 100:.3}% and std: {np.std(test_accs) * 100:.2}%"

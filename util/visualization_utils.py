@@ -176,7 +176,7 @@ def visualize_training(histories, figsize=(10, 6), dpi=300):
     # Plot accuracy
     plt.figure(figsize=figsize, dpi=dpi)
     for i, history in enumerate(histories):
-        plt.plot(history.history['acc'], label=f"Fold {i + 1}")
+        plt.plot(history.history['accuracy'], label=f"Fold {i + 1}")
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.title('Training Accuracy')
