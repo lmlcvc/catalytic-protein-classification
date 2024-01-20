@@ -79,7 +79,7 @@ elif graph_type == "molecule":
             bond_stereo
         ]
     }
-    graphein_config = MoleculeGraphConfig()
+    graphein_config = MoleculeGraphConfig(**graphein_params_to_change)
 
 graphein_config.dict()
 

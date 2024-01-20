@@ -6,6 +6,7 @@ import warnings
 import util.cyclic_peptide_utils as cyc
 
 from biopandas.pdb import PandasPdb
+from sklearn.model_selection import train_test_split
 from rdkit import Chem
 
 config = configparser.ConfigParser()
@@ -264,10 +265,17 @@ def generate_cyclic_targets(peptide_df, output_file_name):
 
 
 def training_inference_split(peptide_df, inference_percentage):
+    df_copy = peptide_df.copy()
+    df_copy['class'] = df_copy['permeability'].apply(lambda x: 1 if x < -6 else 0)
+    classes =df_copy.pop('class')
+
     inference_rows = int(len(peptide_df) * inference_percentage)
 
-    inference_df = peptide_df.sample(n=inference_rows).sort_values(by='ID')
-    training_df = peptide_df.drop(inference_df.index).sort_values(by='ID')
+    training_df, inference_df, _, _ = train_test_split(peptide_df, classes, test_size=inference_rows, stratify=classes)
+    print(inference_df)
+    print(training_df)
+    inference_df = inference_df.sort_values(by='ID')
+    training_df = training_df.sort_values(by='ID')
 
     return training_df, inference_df
 

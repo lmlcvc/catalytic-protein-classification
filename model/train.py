@@ -83,6 +83,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
     )
 
     vu.visualize_training(all_histories)
+    vu.visualize_validation(all_histories)
 
     plt.figure(figsize=(8, 6))
     plt.hist(test_accs)

@@ -19,7 +19,8 @@ graph_type = config['graph_type']
 
 
 if graph_type == 'molecule':
-    node_feature_names = ["Atomic Mass",
+    node_feature_names = ["Atomic Number",
+                          "Atomic Mass",
                           "Degree",
                           "Total degree",
                           "Total valence",
@@ -208,6 +209,32 @@ def visualize_training(histories, figsize=(10, 6), dpi=300):
     plt.legend()
     plt.savefig(os.path.join(model_dir, 'training_accuracy.png'))
     plt.close()
+
+
+def visualize_validation(histories, figsize=(10, 6), dpi=300):
+    # Plot loss
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['loss'], label="Training")
+        plt.plot(history.history['val_loss'], label="Validation")
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training Loss')
+        plt.legend()
+        plt.savefig(os.path.join(model_dir, f'training_validation_loss_fold_{i + 1}.png'))
+        plt.close()
+
+    # Plot accuracy
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['acc'], label="Training")
+        plt.plot(history.history['val_acc'], label="Validation")
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.title('Training Accuracy')
+        plt.legend()
+        plt.savefig(os.path.join(model_dir, f'training_validation_accuracy_fold_{i + 1}.png'))
+        plt.close()
 
 
 def evaluate_model(predictions, labels):
