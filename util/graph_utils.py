@@ -35,16 +35,30 @@ use_distance_as_weight = config['use_distance_as_weight']
 graphein_config = None
 
 if graph_type == "residue":
+    # TODO: explicitly add node construction funcs
     graphein_params_to_change = {"edge_construction_functions": [add_peptide_bonds, add_hydrogen_bond_interactions]}
+
+    edge_construction_funcs = [
+        distance.add_aromatic_interactions,
+        distance.add_cation_pi_interactions,
+        distance.add_aromatic_sulphur_interactions,
+        distance.add_disulfide_interactions,
+        distance.add_hydrogen_bond_interactions,
+        distance.add_hydrophobic_interactions,
+        distance.add_ionic_interactions
+        # intramolecular.pi_stacking
+        # intramolecular.salt_bridge,
+        # intramolecular.t_stacking,
+        # intramolecular.van_der_waals
+    ]
+
+    graphein_params_to_change = {"edge_construction_functions": edge_construction_funcs}
     graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 elif graph_type == "atom":
     graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
     graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
 graphein_config.dict()
-
-
-# TODO organise code
 
 
 def get_distance_matrix(coords):
@@ -80,8 +94,8 @@ def prepare_nodes(nodes):
     nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
     # remove unnecessary columns
-    # TODO: remove residue number
-    nodes = nodes.drop(['chain_id', 'coords', 'meiler'], axis=1)
+    # XXX: graphein.protein.features.nodes.amino_acid.amino_acid_one_hot
+    nodes = nodes.drop(['residue_number', 'chain_id', 'coords', 'meiler'], axis=1)
 
     # remove or transform data depending on graph type
     if graph_type == "atom":
@@ -124,24 +138,9 @@ def generate_graph(source_directory, entry, output_directory):
     """
 
     try:
-        edge_construction_funcs = [
-            distance.add_aromatic_interactions,
-            distance.add_cation_pi_interactions,
-            distance.add_aromatic_sulphur_interactions,
-            distance.add_disulfide_interactions,
-            distance.add_hydrogen_bond_interactions,
-            distance.add_hydrophobic_interactions,
-            distance.add_ionic_interactions,
-            intramolecular.pi_stacking,
-            intramolecular.salt_bridge,
-            intramolecular.t_stacking,
-            intramolecular.van_der_waals
-        ]
-
         graph = construct_graph(config=graphein_config,
                                 path=pdb_path,
-                                pdb_code=entry,
-                                edge_construction_funcs=edge_construction_funcs)
+                                pdb_code=entry)
 
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
