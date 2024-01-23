@@ -2,18 +2,17 @@ import configparser
 import logging
 import os.path
 
-import graphein.protein.edges.distance
+import graphein.protein.features.nodes.amino_acid
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 from biopandas.pdb import PandasPdb
-from graphein.protein import add_peptide_bonds, add_hydrogen_bond_interactions
 from graphein.protein.config import ProteinGraphConfig
+from graphein.protein.edges import distance
 from graphein.protein.edges.atomic import add_atomic_edges
 from graphein.protein.graphs import construct_graph
-from graphein.protein.edges import distance, intramolecular
-from graphein.protein.visualisation import plotly_protein_structure_graph, plot_protein_structure_graph
+from graphein.protein.visualisation import plotly_protein_structure_graph
 from stellargraph import StellarGraph
 
 import util.file_utils as fu
@@ -69,7 +68,7 @@ def replace_categories(df, source_dir, df_type):
         columns = ["residue_name"]
         if graph_type == "atom":
             columns.extend(["atom_type", "element_symbol"])
-    elif df_type == "edges":  # TODO maybe encode source and target as well (preferably same as nodes encoding)
+    elif df_type == "edges":
         columns = ["kind"]
     else:
         raise f"Wrong df type: {df_type}"
@@ -91,12 +90,27 @@ def prepare_nodes(nodes):
     nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
     # remove unnecessary columns
-    # XXX: graphein.protein.features.nodes.amino_acid.amino_acid_one_hot
     nodes = nodes.drop(['residue_number', 'chain_id', 'coords', 'meiler'], axis=1)
 
-    # TODO: one-hot of residue name
-    residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GlY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE",
+    residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE",
                      "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
+
+    # --- One-hot ---
+    # Create new columns for each residue name
+    res_names_encoded = pd.DataFrame()
+    for residue in residue_names:
+        # 1 if that kind was present in edges[kind], otherwise 0
+        res_names_encoded[residue] = nodes['residue_name'].apply(lambda x: 1 if residue in x.replace("'", "") else 0)
+    # ---------------
+
+    # Check for values in 'residue_name' not present in residue_names
+    unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
+    if len(unknown_residues) > 0:
+        unknown_residues_str = ', '.join(unknown_residues)
+        print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
+
+    # Apply changes to original df
+    nodes = pd.concat([nodes, res_names_encoded], axis=1)
 
     # remove or transform data depending on graph type
     if graph_type == "atom":
@@ -106,7 +120,7 @@ def prepare_nodes(nodes):
         nodes.element_symbol = pd.Categorical(nodes.element_symbol)
         nodes['element_symbol'] = nodes.element_symbol.cat.codes
     elif graph_type == "residue":
-        nodes = nodes.drop(['atom_type', 'element_symbol'], axis=1)
+        nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name'], axis=1)
     else:
         raise f"Unexpected graph type argument: {graph_type}"
 
@@ -120,11 +134,13 @@ def prepare_edges(edges):
     edge_kinds = ["aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic", "ionic",
                   "protein_bond"]
 
+    # --- One-hot ---
     # Split the values in the 'kind' column and create new columns for each edge kind
     edge_kinds_encoded = pd.DataFrame()
     for kind in edge_kinds:
         # 1 if that kind was present in edges[kind], otherwise 0
         edge_kinds_encoded[kind] = edges['kind'].apply(lambda x: 1 if kind in x.replace("'", "").split(',') else 0)
+    # ---------------
 
     # Warn if there are values in 'kind' that are not present in edge_kinds
     unknown_kinds = set(edges['kind'].str.split(', ').sum()) - set(edge_kinds)
@@ -160,7 +176,6 @@ def generate_graph(source_directory, entry, output_directory):
         graph = construct_graph(config=graphein_config,
                                 path=pdb_path,
                                 pdb_code=entry)
-
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
         return
@@ -243,9 +258,6 @@ def load_graphs(source_directory):
 
         edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)
         nodes_df = pd.read_csv(os.path.join(source_directory, nodes), index_col=0)
-
-        nodes_df = replace_categories(nodes_df, categories_dir, "nodes")
-        edges_df = replace_categories(edges_df, categories_dir, "edges")
 
         if use_distance_as_weight.lower() == 'y':
             graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df, edge_weight_column='distance'))

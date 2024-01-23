@@ -35,7 +35,6 @@ graph_dir = config['graph_dir']
 demo_graph_dir = config['demo_graph_dir']
 inference_dir = config['inference_dir']
 model_dir = config['model_dir']
-categories_dir = config['categories_dir']
 visualization_dir = config['visualization_dir']
 
 analysis_dir = config['analysis_dir']
@@ -55,16 +54,12 @@ def check_and_generate_targets():
         logging.info("Finished target generation")
 
 
-def generate_graphs_and_categories():
+def generate_graphs():
     if demo_run.lower() == "y":
         if not os.listdir(demo_graph_dir):
             [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
              os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
-
-            # Generate graph categories
-            gu.generate_categories(demo_graph_dir, categories_dir)
-            logging.info("Generated graph categories")
 
     else:
         if not os.listdir(graph_dir):
@@ -75,9 +70,6 @@ def generate_graphs_and_categories():
             [gu.generate_graph(pdb_non_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
              os.listdir(pdb_non_catalytic_dir)]
             logging.info("Generated non-catalytic graphs")
-
-            gu.generate_categories(graph_dir, categories_dir)
-            logging.info("Generated graph categories")
 
 
 def load_graphs_and_labels():
@@ -149,23 +141,33 @@ if __name__ == "__main__":
     graphs = []
     inference_graphs = []
 
+    # Test: generate graphs
+    generate_graphs()
+    graphs, graph_labels = load_graphs_and_labels()
+    graph_generator = PaddedGraphGenerator(graphs=graphs)
+
+    sys.exit()
+
+    # Test: training
+    model = train_model(graph_generator, graph_labels, epochs=3, folds=3, n_repeats=3)
+    print(model.summary())
+
+    # Save the model
+    model.save(os.path.join(model_dir, "demo.h5"))
+    print("GCN model trained and saved successfully.")
+
+    sys.exit()
+
     # Load or generate graphs
     if not load_model():
         # Create graphs for model
-        generate_graphs_and_categories()
+        generate_graphs()
         graphs, graph_labels = load_graphs_and_labels()
         graph_generator = PaddedGraphGenerator(graphs=graphs)
 
         # Train model
         model = perform_model_training()
     else:
-        fu.create_folder(categories_dir)
-        if not os.listdir(categories_dir):
-            gu.generate_categories(demo_graph_dir,
-                                   categories_dir) if demo_run.lower() == "y" else gu.generate_categories(
-                graph_dir, categories_dir)
-            logging.info("Generated graph categories")
-
         model = load_model()
 
         if model is None:
@@ -178,7 +180,6 @@ if __name__ == "__main__":
     if not os.listdir(inference_dir):
         generate_inference_graphs()
     fu.generate_ground_truth(pdb_inference_dir)
-    gu.generate_categories(inference_dir, categories_dir)
     inference_graphs = gu.load_graphs(inference_dir)
     inference_labels = gu.load_graph_labels("inference_truth.txt")
 
