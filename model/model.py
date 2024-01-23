@@ -1,7 +1,8 @@
-from keras import Model, Input
-from keras.layers import Dense
-from keras.losses import binary_crossentropy
-from keras.optimizers import Adam
+import tensorflow.keras as keras
+from tensorflow.keras import Model, Input
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras.optimizers import Adam
 from stellargraph.layer import GCNSupervisedGraphClassification
 from stellargraph.layer import DeepGraphCNN
 

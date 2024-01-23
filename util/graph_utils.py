@@ -35,9 +35,6 @@ use_distance_as_weight = config['use_distance_as_weight']
 graphein_config = None
 
 if graph_type == "residue":
-    # TODO: explicitly add node construction funcs
-    graphein_params_to_change = {"edge_construction_functions": [add_peptide_bonds, add_hydrogen_bond_interactions]}
-
     edge_construction_funcs = [
         distance.add_aromatic_interactions,
         distance.add_cation_pi_interactions,
@@ -97,6 +94,10 @@ def prepare_nodes(nodes):
     # XXX: graphein.protein.features.nodes.amino_acid.amino_acid_one_hot
     nodes = nodes.drop(['residue_number', 'chain_id', 'coords', 'meiler'], axis=1)
 
+    # TODO: one-hot of residue name
+    residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GlY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE",
+                     "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
+
     # remove or transform data depending on graph type
     if graph_type == "atom":
         nodes.atom_type = pd.Categorical(nodes.atom_type)
@@ -115,6 +116,24 @@ def prepare_nodes(nodes):
 def prepare_edges(edges):
     edges['kind'] = edges['kind'].astype(str)
     edges['kind'] = edges['kind'].str.translate({ord('{'): None, ord('}'): None, ord("'"): None})
+
+    edge_kinds = ["aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic", "ionic",
+                  "protein_bond"]
+
+    # Split the values in the 'kind' column and create new columns for each edge kind
+    edge_kinds_encoded = pd.DataFrame()
+    for kind in edge_kinds:
+        # 1 if that kind was present in edges[kind], otherwise 0
+        edge_kinds_encoded[kind] = edges['kind'].apply(lambda x: 1 if kind in x.replace("'", "").split(',') else 0)
+
+    # Warn if there are values in 'kind' that are not present in edge_kinds
+    unknown_kinds = set(edges['kind'].str.split(', ').sum()) - set(edge_kinds)
+    if unknown_kinds:
+        print(f"Warning: Edge kind(s) not in column names: {unknown_kinds}")
+
+    # Apply changes to original df
+    edges = pd.concat([edges, edge_kinds_encoded], axis=1)
+    edges = edges.drop(columns=['kind'])
 
     return edges
 

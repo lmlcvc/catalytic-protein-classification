@@ -2,11 +2,10 @@ import configparser
 import csv
 import os
 
+import tensorflow.keras as keras
 import numpy as np
-from keras.models import clone_model
 from matplotlib import pyplot as plt
 
-from keras.callbacks import EarlyStopping
 from sklearn import model_selection
 from datetime import datetime
 
@@ -21,7 +20,7 @@ config = config['default']
 use_dgcnn = config['use_dgcnn']
 model_dir = config['model_dir']
 
-es = EarlyStopping(
+es = keras.callbacks.EarlyStopping(
     monitor="val_loss", min_delta=0, patience=25, restore_best_weights=True
 )
 
