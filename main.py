@@ -60,6 +60,8 @@ def generate_graphs():
              os.listdir(pdb_demo_dir)]
             logging.info("Generated demo graphs")
 
+        # TODO: add tagret generation
+
     else:
         if not os.listdir(graph_dir):
             df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep="\s+", skip_blank_lines=True,
@@ -72,12 +74,17 @@ def generate_graphs():
                 pdb_id = entry.replace(".pdb", "")
                 if pdb_id in df["PDB_ID"].values:
                     gu.generate_graph(pdb_catalytic_dir, pdb_id, graph_dir)
+                    # TODO: delete targets and start anew every time
+                    with open(os.path.join(targets_dir, "targets.txt"), "a") as targets_file:
+                        targets_file.write(f"{pdb_id}\t1\n")
 
             # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
             non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(pdb_catalytic_dir)))
             for entry in non_catalytic_entries:
                 pdb_id = entry.replace(".pdb", "")
                 gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir)
+                with open(os.path.join(targets_dir, "targets.txt"), "a") as targets_file:
+                    targets_file.write(f"{pdb_id}\t0\n")
             logging.info("Generated non-catalytic graphs")
 
 
