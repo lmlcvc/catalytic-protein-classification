@@ -1,20 +1,21 @@
+import configparser
 import csv
-import sys
+import logging
+import os
+import random
+import warnings
+from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
-from model.train import train_model
 from model.model import in_out_tensors
+from model.train import train_model
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu, analysis_utils as au
-from datetime import datetime
-
-import os
-import configparser
-import logging
-import warnings
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -28,12 +29,10 @@ use_dgcnn = config['use_dgcnn']
 targets_dir = config['targets_dir']
 pdb_catalytic_dir = config['pdb_catalytic_dir']
 pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
-pdb_inference_dir = config['pdb_inference_dir']
 pdb_demo_dir = config['pdb_demo_dir']
 
 graph_dir = config['graph_dir']
 demo_graph_dir = config['demo_graph_dir']
-inference_dir = config['inference_dir']
 model_dir = config['model_dir']
 visualization_dir = config['visualization_dir']
 
@@ -63,12 +62,22 @@ def generate_graphs():
 
     else:
         if not os.listdir(graph_dir):
-            [gu.generate_graph(pdb_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
-             os.listdir(pdb_catalytic_dir)]
-            logging.info("Generated catalytic graphs")
+            df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep="\s+", skip_blank_lines=True,
+                             na_values=[''])
+            df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
+            df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
 
-            [gu.generate_graph(pdb_non_catalytic_dir, entry.replace(".pdb", ""), graph_dir) for entry in
-             os.listdir(pdb_non_catalytic_dir)]
+            # Generate graphs only for entries in pdb_catalytic_dir that have corresponding entries in df["PDB_ID"]
+            for entry in os.listdir(pdb_catalytic_dir):
+                pdb_id = entry.replace(".pdb", "")
+                if pdb_id in df["PDB_ID"].values:
+                    gu.generate_graph(pdb_catalytic_dir, pdb_id, graph_dir)
+
+            # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
+            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(pdb_catalytic_dir)))
+            for entry in non_catalytic_entries:
+                pdb_id = entry.replace(".pdb", "")
+                gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir)
             logging.info("Generated non-catalytic graphs")
 
 
@@ -77,13 +86,6 @@ def load_graphs_and_labels():
         return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
     else:
         return gu.load_graphs(graph_dir), gu.load_graph_labels()
-
-
-def generate_inference_graphs():
-    if not os.listdir(inference_dir):
-        [gu.generate_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
-         os.listdir(pdb_inference_dir)]
-        logging.info("Generated inference graphs")
 
 
 def load_model():
@@ -133,38 +135,36 @@ def perform_model_training():
 if __name__ == "__main__":
     fu.check_setup(check_setup)
 
-    if one_per_entry.lower() == "y":  # TODO: match check_setup and pick_best calls AAAAAAAAAAAAA
+    if one_per_entry.lower() == "y":
         fu.pick_best()
 
     check_and_generate_targets()
 
-    graphs = []
-    inference_graphs = []
-
+    """
     # Test: generate graphs
     generate_graphs()
     graphs, graph_labels = load_graphs_and_labels()
-    graph_generator = PaddedGraphGenerator(graphs=graphs)
-
-    sys.exit()
+    train_graphs, test_graphs, train_labels, test_labels = train_test_split(
+        graphs, graph_labels, test_size=0.2, random_state=42
+    )
+    graph_generator = PaddedGraphGenerator(graphs=train_graphs)
 
     # Test: training
     model = train_model(graph_generator, graph_labels, epochs=3, folds=3, n_repeats=3)
     print(model.summary())
 
-    # Save the model
+    # Test: Save the model
     model.save(os.path.join(model_dir, "demo.h5"))
     print("GCN model trained and saved successfully.")
 
     sys.exit()
+    """
 
     # Load or generate graphs
-    if not load_model():
-        # Create graphs for model
-        generate_graphs()
-        graphs, graph_labels = load_graphs_and_labels()
-        graph_generator = PaddedGraphGenerator(graphs=graphs)
+    generate_graphs()
 
+    # Load or train model
+    if not load_model():
         # Train model
         model = perform_model_training()
     else:
@@ -173,19 +173,15 @@ if __name__ == "__main__":
         if model is None:
             raise ValueError("Model cannot be None")
 
-        # graphs, graph_labels = load_graphs_and_labels()
-
-    # Generate and use inference graphs
-    fu.create_folder(inference_dir)
-    if not os.listdir(inference_dir):
-        generate_inference_graphs()
-    fu.generate_ground_truth(pdb_inference_dir)
-    inference_graphs = gu.load_graphs(inference_dir)
-    inference_labels = gu.load_graph_labels("inference_truth.txt")
-
-    # Prepare input graph data for inference
-    inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
-    inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
+    # Prepare input graph data for training and testing
+    graphs, graph_labels = load_graphs_and_labels()
+    train_graphs, test_graphs, train_labels, test_labels = train_test_split(
+        graphs, graph_labels, test_size=0.2, random_state=42
+    )
+    graph_generator = PaddedGraphGenerator(graphs=train_graphs)
+    inference_generator = PaddedGraphGenerator(graphs=test_graphs)
+    training_tensors = graph_generator.flow(train_graphs, weighted=True, targets=train_labels)
+    inference_tensors = inference_generator.flow(test_graphs, weighted=True, targets=test_labels)
 
     # Initialise visualisation/run directory
     fu.create_folder(visualization_dir)
@@ -205,8 +201,8 @@ if __name__ == "__main__":
     predictions = model.predict(inference_tensors)
 
     # Visualise predictions histogram
-    # TODO: uncomment when fixed
-    # vu.visualise_predictions(predictions, inference_labels.to_list(), os.path.join(run_dir, "predictions"))
+    # TODO: uncomment when fixed & pass testing graphs as obj
+    # vu.visualise_predictions(predictions, test_labels.to_list(), os.path.join(run_dir, "predictions"))
 
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
@@ -228,10 +224,10 @@ if __name__ == "__main__":
     ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
 
     most_relevant_nodes = {}  # dict of protein: [nodes with the largest gradients]
-    for i, graph in enumerate(inference_graphs):
+    for i, graph in enumerate(test_graphs):
         prediction = binary_predictions[i][0]
-        print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
-              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels[i])}\n")
+        print(f"Graph {i + 1} - {test_labels.index[i]}:\n"
+              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(test_labels[i])}\n")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]
@@ -244,10 +240,8 @@ if __name__ == "__main__":
         node_gradients = gradients[0]
         edge_gradients = gradients[-1]
 
-        most_relevant_nodes[inference_labels.index[i]] = au.extract_relevant_gradients(node_gradients)
-        # break
+        most_relevant_nodes[test_labels.index[i]] = au.extract_relevant_gradients(node_gradients)
 
-        # """
         # Saliency maps
         node_saliency_map = vu.calculate_node_saliency(gradients[0])
         edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
@@ -267,7 +261,7 @@ if __name__ == "__main__":
         # Print feature importance ranking
         features_ranked = []
         for rank, feature_index in enumerate(feature_ranking):
-            if inference_labels[i] == 1:
+            if test_labels[i] == 1:
                 features_ranked_positive[feature_index][rank - 1] += 1
             else:
                 features_ranked_negative[feature_index][rank - 1] += 1
@@ -276,13 +270,10 @@ if __name__ == "__main__":
         # Visualize the saliency maps and save them as images
         vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
         vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
-        # """
 
     # Active site comparison (gradient vs. ground truth)
-    # print(most_relevant_nodes)
     au.active_site_comparison(most_relevant_nodes, analysis_run_dir)
     au.generate_triad_combinations(most_relevant_nodes, analysis_run_dir)
-    # sys.exit()
 
     # class-aggregated analysis
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
@@ -292,10 +283,5 @@ if __name__ == "__main__":
     # Correlation matrix of feature ranking in inference
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
-    # Amino-acid frequency analysis
-    # au.aa_freq_analysis(zip(os.listdir(pdb_inference_dir), binary_predictions, inference_labels),
-    #                    os.path.join(analysis_run_dir, "amino_acids"))
-    # au.extract_popular_aas(analysis_run_dir)
-
-    vu.evaluate_model(binary_predictions, inference_labels, both_classes_present=False)
+    vu.evaluate_model(binary_predictions, test_labels, both_classes_present=False)
     vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
