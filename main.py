@@ -79,7 +79,7 @@ def generate_graphs():
                         targets_file.write(f"{pdb_id}\t1\n")
 
             # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
-            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(pdb_catalytic_dir)))
+            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(graph_dir)))
             for entry in non_catalytic_entries:
                 pdb_id = entry.replace(".pdb", "")
                 gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir)
