@@ -169,6 +169,16 @@ if __name__ == "__main__":
 
     # Load or generate graphs
     generate_graphs()
+    
+    # Prepare input graph data for training and testing
+    graphs, graph_labels = load_graphs_and_labels()
+    train_graphs, test_graphs, train_labels, test_labels = train_test_split(
+        graphs, graph_labels, test_size=0.2, random_state=42
+    )
+    graph_generator = PaddedGraphGenerator(graphs=train_graphs)
+    inference_generator = PaddedGraphGenerator(graphs=test_graphs)
+    training_tensors = graph_generator.flow(train_graphs, weighted=True, targets=train_labels)
+    inference_tensors = inference_generator.flow(test_graphs, weighted=True, targets=test_labels)
 
     # Load or train model
     if not load_model():
@@ -179,16 +189,6 @@ if __name__ == "__main__":
 
         if model is None:
             raise ValueError("Model cannot be None")
-
-    # Prepare input graph data for training and testing
-    graphs, graph_labels = load_graphs_and_labels()
-    train_graphs, test_graphs, train_labels, test_labels = train_test_split(
-        graphs, graph_labels, test_size=0.2, random_state=42
-    )
-    graph_generator = PaddedGraphGenerator(graphs=train_graphs)
-    inference_generator = PaddedGraphGenerator(graphs=test_graphs)
-    training_tensors = graph_generator.flow(train_graphs, weighted=True, targets=train_labels)
-    inference_tensors = inference_generator.flow(test_graphs, weighted=True, targets=test_labels)
 
     # Initialise visualisation/run directory
     fu.create_folder(visualization_dir)
