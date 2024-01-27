@@ -69,22 +69,31 @@ def generate_graphs():
             df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
             df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
 
+            # Delete targets and start anew every time
+            targets_file_path = os.path.join(targets_dir, "targets.txt")
+            if os.path.exists(targets_file_path):
+                os.remove(targets_file_path)
+
             # Generate graphs only for entries in pdb_catalytic_dir that have corresponding entries in df["PDB_ID"]
             for entry in os.listdir(pdb_catalytic_dir):
                 pdb_id = entry.replace(".pdb", "")
                 if pdb_id in df["PDB_ID"].values:
-                    gu.generate_graph(pdb_catalytic_dir, pdb_id, graph_dir)
-                    # TODO: delete targets and start anew every time
-                    with open(os.path.join(targets_dir, "targets.txt"), "a") as targets_file:
-                        targets_file.write(f"{pdb_id}\t1\n")
+                    if gu.generate_graph(pdb_catalytic_dir, pdb_id, graph_dir):
+                        with open(targets_file_path, "a") as targets_file:
+                            targets_file.write(f"{pdb_id}\t1\n")
+                    else:
+                        logging.warning(f"Failed to generate graph for {pdb_id}")
+            logging.info("Generated catalytic graphs")
 
             # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
             non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(graph_dir)))
             for entry in non_catalytic_entries:
                 pdb_id = entry.replace(".pdb", "")
-                gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir)
-                with open(os.path.join(targets_dir, "targets.txt"), "a") as targets_file:
-                    targets_file.write(f"{pdb_id}\t0\n")
+                if gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir):
+                    with open(targets_file_path, "a") as targets_file:
+                        targets_file.write(f"{pdb_id}\t0\n")
+                else:
+                    logging.warning(f"Failed to generate graph for {pdb_id}")
             logging.info("Generated non-catalytic graphs")
 
 

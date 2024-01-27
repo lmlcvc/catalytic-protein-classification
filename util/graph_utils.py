@@ -86,72 +86,84 @@ def replace_categories(df, source_dir, df_type):
 
 
 def prepare_nodes(nodes):
-    # split coords into separate columns
-    nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
+    try:
+        # split coords into separate columns
+        nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
-    # remove unnecessary columns
-    nodes = nodes.drop(['residue_number', 'chain_id', 'coords', 'meiler'], axis=1)
+        # remove unnecessary columns
+        nodes = nodes.drop(['residue_number', 'chain_id', 'coords', 'meiler'], axis=1)
 
-    residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE",
-                     "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
+        residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET",
+                         "PHE",
+                         "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
 
-    # --- One-hot ---
-    # Create new columns for each residue name
-    res_names_encoded = pd.DataFrame()
-    for residue in residue_names:
-        # 1 if that kind was present in edges[kind], otherwise 0
-        res_names_encoded[residue] = nodes['residue_name'].apply(lambda x: 1 if residue in x.replace("'", "") else 0)
-    # ---------------
+        # --- One-hot ---
+        # Create new columns for each residue name
+        res_names_encoded = pd.DataFrame()
+        for residue in residue_names:
+            # 1 if that kind was present in edges[kind], otherwise 0
+            res_names_encoded[residue] = nodes['residue_name'].apply(
+                lambda x: 1 if residue in x.replace("'", "") else 0)
+        # ---------------
 
-    # Check for values in 'residue_name' not present in residue_names
-    unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
-    if len(unknown_residues) > 0:
-        unknown_residues_str = ', '.join(unknown_residues)
-        print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
+        # Check for values in 'residue_name' not present in residue_names
+        unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
+        if len(unknown_residues) > 0:
+            unknown_residues_str = ', '.join(unknown_residues)
+            print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
 
-    # Apply changes to original df
-    nodes = pd.concat([nodes, res_names_encoded], axis=1)
+        # Apply changes to original df
+        nodes = pd.concat([nodes, res_names_encoded], axis=1)
 
-    # remove or transform data depending on graph type
-    if graph_type == "atom":
-        nodes.atom_type = pd.Categorical(nodes.atom_type)
-        nodes['atom_type'] = nodes.atom_type.cat.codes
+        # remove or transform data depending on graph type
+        if graph_type == "atom":
+            nodes.atom_type = pd.Categorical(nodes.atom_type)
+            nodes['atom_type'] = nodes.atom_type.cat.codes
 
-        nodes.element_symbol = pd.Categorical(nodes.element_symbol)
-        nodes['element_symbol'] = nodes.element_symbol.cat.codes
-    elif graph_type == "residue":
-        nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name'], axis=1)
-    else:
-        raise f"Unexpected graph type argument: {graph_type}"
+            nodes.element_symbol = pd.Categorical(nodes.element_symbol)
+            nodes['element_symbol'] = nodes.element_symbol.cat.codes
+        elif graph_type == "residue":
+            nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name'], axis=1)
+        else:
+            raise f"Unexpected graph type argument: {graph_type}"
 
-    return nodes
+        return nodes
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 
 def prepare_edges(edges):
-    edges['kind'] = edges['kind'].astype(str)
-    edges['kind'] = edges['kind'].str.translate({ord('{'): None, ord('}'): None, ord("'"): None})
+    try:
+        edges['kind'] = edges['kind'].astype(str)
+        edges['kind'] = edges['kind'].str.translate({ord('{'): None, ord('}'): None, ord("'"): None})
 
-    edge_kinds = ["aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic", "ionic",
-                  "protein_bond"]
+        edge_kinds = ["aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic", "ionic",
+                      "protein_bond"]
 
-    # --- One-hot ---
-    # Split the values in the 'kind' column and create new columns for each edge kind
-    edge_kinds_encoded = pd.DataFrame()
-    for kind in edge_kinds:
-        # 1 if that kind was present in edges[kind], otherwise 0
-        edge_kinds_encoded[kind] = edges['kind'].apply(lambda x: 1 if kind in x.replace("'", "").split(',') else 0)
-    # ---------------
+        # --- One-hot ---
+        # Split the values in the 'kind' column and create new columns for each edge kind
+        edge_kinds_encoded = pd.DataFrame()
+        for kind in edge_kinds:
+            # 1 if that kind was present in edges[kind], otherwise 0
+            edge_kinds_encoded[kind] = edges['kind'].apply(lambda x: 1 if kind in x.replace("'", "").split(',') else 0)
+        # ---------------
 
-    # Warn if there are values in 'kind' that are not present in edge_kinds
-    unknown_kinds = set(edges['kind'].str.split(', ').sum()) - set(edge_kinds)
-    if unknown_kinds:
-        print(f"Warning: Edge kind(s) not in column names: {unknown_kinds}")
+        # Warn if there are values in 'kind' that are not present in edge_kinds
+        unknown_kinds = set(edges['kind'].str.split(', ').sum()) - set(edge_kinds)
+        if unknown_kinds:
+            print(f"Warning: Edge kind(s) not in column names: {unknown_kinds}")
 
-    # Apply changes to original df
-    edges = pd.concat([edges, edge_kinds_encoded], axis=1)
-    edges = edges.drop(columns=['kind'])
+        # Apply changes to the original df
+        edges = pd.concat([edges, edge_kinds_encoded], axis=1)
+        edges = edges.drop(columns=['kind'])
 
-    return edges
+        return edges
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 
 def generate_graph(source_directory, entry, output_directory):
@@ -161,16 +173,6 @@ def generate_graph(source_directory, entry, output_directory):
             return
 
     pdb_path = os.path.join(source_directory, f"{entry}.pdb")
-
-    # TODO: new features
-    """
-     :param edge_construction_funcs: List of edge construction functions.
-        Default is ``None``.
-    :type edge_construction_funcs: List[Callable], optional
-    :param edge_annotation_funcs: List of edge annotation functions.
-        Default is ``None``.
-    :type edge_annotation_funcs: List[Callable], optional
-    """
 
     try:
         graph = construct_graph(config=graphein_config,
@@ -187,10 +189,16 @@ def generate_graph(source_directory, entry, output_directory):
     edges = nx.to_pandas_edgelist(graph)
 
     nodes = prepare_nodes(nodes)
+    if nodes is None:
+        return False
+
     edges = prepare_edges(edges)
+    if edges is None:
+        return False
 
     nodes.to_csv(os.path.join(output_directory, f"{entry}_nodes.csv"))
     edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
+    return True
 
 
 def standardise_category(category):
