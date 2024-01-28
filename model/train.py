@@ -2,6 +2,7 @@ import configparser
 import csv
 import os
 
+import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 from matplotlib import pyplot as plt
@@ -20,10 +21,6 @@ config = config['default']
 use_dgcnn = config['use_dgcnn']
 model_dir = config['model_dir']
 
-es = keras.callbacks.EarlyStopping(
-    monitor="val_loss", min_delta=0, patience=25, restore_best_weights=True
-)
-
 
 def train_fold(model, train_gen, test_gen, es, epochs):
     history = model.fit(
@@ -38,10 +35,6 @@ def train_fold(model, train_gen, test_gen, es, epochs):
                "train_recall": history.history['recall'],
                "val_recall": history.history['val_recall']}
 
-    # calculate performance on the test data and return along with history
-    # test_metrics = model.evaluate(test_gen, verbose=1)
-    # test_acc = test_metrics[model.metrics_names.index("acc")]
-
     return history, metrics
 
 
@@ -55,7 +48,7 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
 
     return train_gen, test_gen
 
-# FIXME: logging of training metrics
+
 def log_metrics_to_file(metrics, file_path, fold):
     is_file_empty = not os.path.isfile(file_path) or os.path.getsize(file_path) == 0
 
@@ -80,6 +73,11 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
         n_splits=folds, n_repeats=n_repeats
     ).split(graph_labels, graph_labels)
 
+    es = keras.callbacks.EarlyStopping(
+        monitor="val_loss", min_delta=0, patience=25, restore_best_weights=True
+    )
+
+    run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     for i, (train_index, test_index) in enumerate(stratified_folds):
         print(f"Training and evaluating on fold {i + 1} out of {folds * n_repeats}...")
         train_gen, test_gen = get_generators(
@@ -95,7 +93,6 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
         all_histories.append(history)
         test_accs.append(max(metrics["val_acc"]))  # TODO: double check this max
 
-        run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
         log_metrics_to_file(metrics, os.path.join(model_dir, f"{run_timestamp}.csv"), fold=i + 1)
 
         print(f"Train set size: {len(train_index)} graphs")
@@ -103,7 +100,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
 
         if max(metrics["val_acc"]) > best_acc:
             best_acc = max(metrics["val_acc"])
-            best_model = clone_model(model)
+            best_model = tf.keras.models.clone_model(model)
             best_model.set_weights(best_model.get_weights())
 
     print(
