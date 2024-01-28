@@ -86,7 +86,7 @@ def generate_graphs():
             logging.info("Generated catalytic graphs")
 
             # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
-            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(graph_dir)))
+            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(graph_dir))//2)
             for entry in non_catalytic_entries:
                 pdb_id = entry.replace(".pdb", "")
                 if gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir):
