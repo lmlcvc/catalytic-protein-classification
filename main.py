@@ -123,12 +123,12 @@ def load_model():
     return model
 
 
-def perform_model_training():
+def perform_model_training(generator, labels):
     model = None
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
             # Create and train classification models
-            model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(generator, labels, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -138,7 +138,7 @@ def perform_model_training():
     else:
         if "gcn_model.h5" not in os.listdir(model_dir):
             # Create and train classification models
-            model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(generator, labels, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -156,26 +156,6 @@ if __name__ == "__main__":
 
     check_and_generate_targets()
 
-    """
-    # Test: generate graphs
-    generate_graphs()
-    graphs, graph_labels = load_graphs_and_labels()
-    train_graphs, test_graphs, train_labels, test_labels = train_test_split(
-        graphs, graph_labels, test_size=0.2, random_state=42
-    )
-    graph_generator = PaddedGraphGenerator(graphs=train_graphs)
-
-    # Test: training
-    model = train_model(graph_generator, graph_labels, epochs=3, folds=3, n_repeats=3)
-    print(model.summary())
-
-    # Test: Save the model
-    model.save(os.path.join(model_dir, "demo.h5"))
-    print("GCN model trained and saved successfully.")
-
-    sys.exit()
-    """
-
     # Load or generate graphs
     generate_graphs()
     
@@ -191,11 +171,9 @@ if __name__ == "__main__":
 
     # Load or train model
     if not load_model():
-        # Train model
-        model = perform_model_training()
+        model = perform_model_training(graph_generator, train_labels)
     else:
         model = load_model()
-
         if model is None:
             raise ValueError("Model cannot be None")
 
