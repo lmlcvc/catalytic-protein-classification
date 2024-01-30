@@ -1,12 +1,10 @@
-import tensorflow.keras as keras
+import tensorflow as tf
+from stellargraph.layer import DeepGraphCNN
+from stellargraph.layer import GCNSupervisedGraphClassification
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.optimizers import Adam
-from stellargraph.layer import GCNSupervisedGraphClassification
-from stellargraph.layer import DeepGraphCNN
-
-import tensorflow as tf
 
 
 def in_out_tensors(generator, model):
@@ -44,7 +42,7 @@ def create_graph_classification_model_gcn(generator):
     model = Model(inputs=x_inp, outputs=predictions)
     model.compile(optimizer=Adam(0.005),
                   loss=binary_crossentropy,
-                  metrics=[tf.keras.metrics.Accuracy(),
+                  metrics=[tf.keras.metrics.BinaryAccuracy(),
                            tf.keras.metrics.Precision(name='precision'),
                            tf.keras.metrics.Recall(name='recall')])
 

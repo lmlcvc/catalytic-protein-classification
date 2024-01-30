@@ -28,8 +28,8 @@ def train_fold(model, train_gen, test_gen, es, epochs):
     )
 
     # Accessing metrics
-    metrics = {"train_acc": history.history['accuracy'],
-               "val_acc": history.history['val_accuracy'],
+    metrics = {"train_acc": history.history['binary_accuracy'],
+               "val_acc": history.history['val_binary_accuracy'],
                "train_precision": history.history['precision'],
                "val_precision": history.history['val_precision'],
                "train_recall": history.history['recall'],
@@ -53,14 +53,21 @@ def log_metrics_to_file(metrics, file_path, fold):
     is_file_empty = not os.path.isfile(file_path) or os.path.getsize(file_path) == 0
 
     with open(file_path, "a", newline='') as csvfile:
-        fieldnames = list(metrics.keys()) + ['fold']
+        fieldnames = list(metrics.keys()) + ['fold', 'epoch']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-        if not is_file_empty:
+        if is_file_empty:
             writer.writeheader()
 
-        metrics['fold'] = fold
-        writer.writerow(metrics)
+        # Get the length of the lists in metrics (assuming all lists have the same length)
+        num_rows = len(next(iter(metrics.values())))
+
+        for i in range(num_rows):
+            # Construct a row dictionary with the i-th element of each list
+            row = {key: round(metrics[key][i], 2) for key in metrics}
+            row['fold'] = fold
+            row['epoch'] = i + 1
+            writer.writerow(row)
 
 
 def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):

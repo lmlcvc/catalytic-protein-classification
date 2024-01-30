@@ -176,12 +176,22 @@ def visualize_training(histories, figsize=(10, 6), dpi=300):
     # Plot accuracy
     plt.figure(figsize=figsize, dpi=dpi)
     for i, history in enumerate(histories):
-        plt.plot(history.history['accuracy'], label=f"Fold {i + 1}")
+        plt.plot(history.history['binary_accuracy'], label=f"Fold {i + 1}")
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.title('Training Accuracy')
     plt.legend()
     plt.savefig(os.path.join(model_dir, 'training_accuracy.png'))
+    plt.close()
+
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['val_binary_accuracy'], label=f"Fold {i + 1}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Validation Accuracy')
+    plt.title('Validation Accuracy')
+    plt.legend()
+    plt.savefig(os.path.join(model_dir, 'validation_accuracy.png'))
     plt.close()
 
 
