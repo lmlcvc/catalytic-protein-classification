@@ -56,11 +56,30 @@ def check_and_generate_targets():
 def generate_graphs():
     if demo_run.lower() == "y":
         if not os.listdir(demo_graph_dir):
-            [gu.generate_graph(pdb_demo_dir, entry.replace(".pdb", ""), demo_graph_dir) for entry in
-             os.listdir(pdb_demo_dir)]
-            logging.info("Generated demo graphs")
+            # Delete targets and start anew every time
+            targets_file_path = os.path.join(targets_dir, "targets.txt")
+            if os.path.exists(targets_file_path):
+                os.remove(targets_file_path)
 
-        # TODO: add tagret generation
+            cdir = os.path.join(pdb_demo_dir, "catalytic")
+            ncdir = os.path.join(pdb_demo_dir, "non-catalytic")
+            for entry in os.listdir(cdir):
+                pdb_id = entry.replace(".pdb", "")
+                if gu.generate_graph(cdir, pdb_id, demo_graph_dir):
+                    with open(targets_file_path, "a") as targets_file:
+                        targets_file.write(f"{pdb_id}\t1\n")
+                else:
+                    logging.warning(f"Failed to generate graph for {pdb_id}")
+            logging.info("Generated catalytic graphs")
+
+            for entry in os.listdir(ncdir):
+                pdb_id = entry.replace(".pdb", "")
+                if gu.generate_graph(ncdir, pdb_id, demo_graph_dir):
+                    with open(targets_file_path, "a") as targets_file:
+                        targets_file.write(f"{pdb_id}\t0\n")
+                else:
+                    logging.warning(f"Failed to generate graph for {pdb_id}")
+            logging.info("Generated non-catalytic graphs")
 
     else:
         if not os.listdir(graph_dir):
@@ -86,7 +105,7 @@ def generate_graphs():
             logging.info("Generated catalytic graphs")
 
             # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
-            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(graph_dir))//2)
+            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir), len(os.listdir(graph_dir)) // 2)
             for entry in non_catalytic_entries:
                 pdb_id = entry.replace(".pdb", "")
                 if gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir):
@@ -137,13 +156,22 @@ def perform_model_training(generator, labels):
 
     else:
         if "gcn_model.h5" not in os.listdir(model_dir):
-            # Create and train classification models
-            model = train_model(generator, labels, epochs=200, folds=10, n_repeats=5)
-            print(model.summary())
+            if demo_run.lower() == "y":
+                # Create and train classification models
+                model = train_model(generator, labels, epochs=3, folds=3, n_repeats=3)
+                print(model.summary())
 
-            # Save the model
-            model.save(os.path.join(model_dir, "gcn_model.h5"))
-            print("GCN model trained and saved successfully.")
+                # Save the model
+                model.save(os.path.join(model_dir, "gcn_model.h5"))
+                print("Demo GCN model trained and saved successfully.")
+            else:
+                # Create and train classification models
+                model = train_model(generator, labels, epochs=200, folds=10, n_repeats=5)
+                print(model.summary())
+
+                # Save the model
+                model.save(os.path.join(model_dir, "gcn_model.h5"))
+                print("GCN model trained and saved successfully.")
 
     return model
 
@@ -158,7 +186,7 @@ if __name__ == "__main__":
 
     # Load or generate graphs
     generate_graphs()
-    
+
     # Prepare input graph data for training and testing
     graphs, graph_labels = load_graphs_and_labels()
     train_graphs, test_graphs, train_labels, test_labels = train_test_split(
@@ -214,7 +242,6 @@ if __name__ == "__main__":
     features_ranked_negative = [[0 for j in range(inference_generator.node_features_size)] for i in
                                 range(inference_generator.node_features_size)]
 
-    fu.generate_aa_frequencies()
     ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
 
     most_relevant_nodes = {}  # dict of protein: [nodes with the largest gradients]
@@ -244,15 +271,16 @@ if __name__ == "__main__":
         feature_importance = np.mean(np.abs(node_gradients[0].numpy()), axis=0)
         feature_ranking = np.argsort(feature_importance)[::-1]
 
+        # TODO: also do for edge
         with open(ranks_log_filepath, mode='a', newline='') as csv_file:
             writer = csv.writer(csv_file)
 
             if os.path.getsize(ranks_log_filepath) == 0:
                 writer.writerow(
-                    ["Residue name", "Residue number", "B-factor", "X coordinate", "Y coordinate", "Z coordinate"])
+                    ["Residue name", "B-factor", "X coordinate", "Y coordinate", "Z coordinate"])
             writer.writerow(list(feature_ranking))
 
-        # Print feature importance ranking
+        # Save feature importance ranking
         features_ranked = []
         for rank, feature_index in enumerate(feature_ranking):
             if test_labels[i] == 1:
@@ -277,5 +305,5 @@ if __name__ == "__main__":
     # Correlation matrix of feature ranking in inference
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
-    vu.evaluate_model(binary_predictions, test_labels, both_classes_present=False)
+    vu.evaluate_model(binary_predictions, test_labels, both_classes_present=True)
     vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
