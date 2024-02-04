@@ -38,9 +38,9 @@ def create_graph_classification_model_gcn(generator):
     predictions = Dense(units=16, activation="relu")(predictions)
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
-    # Let's create the Keras model and prepare it for training
+    # Create the Keras model and prepare it for training
     model = Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=Adam(0.005),
+    model.compile(optimizer=Adam(0.001),
                   loss=binary_crossentropy,
                   metrics=[tf.keras.metrics.BinaryAccuracy(),
                            tf.keras.metrics.Precision(name='precision'),

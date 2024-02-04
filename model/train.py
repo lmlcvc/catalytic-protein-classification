@@ -107,8 +107,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
 
         if max(metrics["val_acc"]) > best_acc:
             best_acc = max(metrics["val_acc"])
-            best_model = tf.keras.models.clone_model(model)
-            best_model.set_weights(best_model.get_weights())
+            best_model = model
 
     print(
         f"Accuracy over all folds mean: {np.mean(test_accs) * 100:.3}% and std: {np.std(test_accs) * 100:.2}%"

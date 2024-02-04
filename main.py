@@ -166,7 +166,7 @@ def perform_model_training(generator, labels):
                 print("Demo GCN model trained and saved successfully.")
             else:
                 # Create and train classification models
-                model = train_model(generator, labels, epochs=200, folds=10, n_repeats=5)
+                model = train_model(generator, labels, epochs=100, folds=10, n_repeats=1)
                 print(model.summary())
 
                 # Save the model
