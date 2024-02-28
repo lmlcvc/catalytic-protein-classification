@@ -207,22 +207,25 @@ def extract_relevant_gradients(gradients):
 
     all_gradients = pd.DataFrame(np.concatenate(normalised_tensors, axis=0))  # reshaping
 
-    # Calculate the threshold for each feature independently
-    # TODO: how to define threshold?
-    threshold_percentage = 98
-    thresholds = np.percentile(all_gradients, threshold_percentage, axis=0)
-    thresholds = thresholds.tolist()
+    max_values = all_gradients.max(axis=1)
+    max_gradients = pd.DataFrame({'gradient': max_values})
 
-    # Extract relevant gradients for each feature
-    filtered_nodes = []
-    for col_idx, threshold in enumerate(thresholds):
-        column = all_gradients[col_idx]
-        filtered_nodes.append(column[column > threshold].index.tolist())
+    max_gradients_sorted = max_gradients.sort_values(by='gradient', ascending=False)
 
-    flat_list = [(item + 1) for sublist in filtered_nodes for item in sublist]
-    unique_nodes = list(set(flat_list))
+    # print(max_gradients_sorted)
 
-    return unique_nodes
+    """ # Extract relevant gradients for each feature
+        filtered_nodes = []
+        for col_idx, threshold in enumerate(thresholds):
+            column = all_gradients[col_idx]
+            filtered_nodes.append(column[column > threshold].index.tolist())
+
+        flat_list = [(item + 1) for sublist in filtered_nodes for item in sublist]
+        unique_nodes = list(set(flat_list))
+
+        return unique_nodes"""
+
+    return max_gradients_sorted
 
 
 def active_site_comparison(data, output_dir):
@@ -271,6 +274,7 @@ def active_site_comparison(data, output_dir):
 
 
 def generate_triad_combinations(data, output_dir):
+    # FIXME: write down by protein (files are too large)
     # XXX: If we go further with this approach, exclude combinations that fail triad criteria
     with open(os.path.join(output_dir, "triad_combinations.csv"), 'w', newline='') as csvfile:
         fieldnames = ['protein', 'res1', 'res2', 'res3']

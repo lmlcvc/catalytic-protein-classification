@@ -2,7 +2,6 @@ import configparser
 import csv
 import os
 
-import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 from matplotlib import pyplot as plt
@@ -10,6 +9,7 @@ from matplotlib import pyplot as plt
 from sklearn import model_selection
 from datetime import datetime
 
+import util.analysis_utils as au
 import util.visualization_utils as vu
 
 from model.model import create_graph_classification_model_gcn, create_graph_classification_model_dcgnn
@@ -70,7 +70,7 @@ def log_metrics_to_file(metrics, file_path, fold):
             writer.writerow(row)
 
 
-def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
+def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs=200, folds=10, n_repeats=5):
     test_accs = []
     all_histories = []
     best_model = None
@@ -104,6 +104,34 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
 
         print(f"Train set size: {len(train_index)} graphs")
         print(f"Test set size: {len(test_index)} graphs")
+
+        #####
+        most_relevant_nodes = {}
+        for idx, graph in enumerate(test_index):
+            inputs = training_tensors[idx][0]
+
+            gradients = vu.get_gradients(model, inputs)
+            node_gradients = gradients[0]
+            edge_gradients = gradients[-1]
+            most_relevant_nodes[graph_labels.index[idx]] = au.extract_relevant_gradients(node_gradients)
+
+            # Saliency maps
+            """node_saliency_map = vu.calculate_node_saliency(gradients[0])
+            edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
+    
+            # Visualize the saliency maps and save them as images
+            vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+            vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))"""
+
+            # TODO: plot gradient/node count and gradient/real active site node count
+            # by now we managed to order the gradients by size
+            # and we managed to match the protein to its label
+            # therefore it is able to compare results to ground truth
+            # set thresholds to a range of values in order to plot
+        print(f"SORTED GRADIENTS:\n{most_relevant_nodes}\n")
+        for protein, df in most_relevant_nodes.items():
+            vu.plot_gradients(protein, df)
+        #####
 
         if max(metrics["val_acc"]) > best_acc:
             best_acc = max(metrics["val_acc"])

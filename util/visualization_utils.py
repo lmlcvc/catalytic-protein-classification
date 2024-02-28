@@ -19,11 +19,51 @@ config = config['default']
 model_dir = config['model_dir']
 
 node_feature_names = ["Residue name",
-                      "Residue number",
                       "B-factor",
                       "X coordinate",
                       "Y coordinate",
                       "Z coordinate"]
+
+
+def plot_gradients(protein, df, n=20):
+    """
+    Plot how many nodes pass gradient thresholds from a range of n elements.
+
+    Args:
+        protein: protein name
+        df: sorted dataframe matching gradient values to row index (index in protein)
+        n: number of thresholds in range
+
+    Returns:
+
+    """
+
+    total_nodes = len(df)
+    max_gradient = df.iloc[0]['gradient']
+    min_gradient = df.iloc[-1]['gradient']
+
+    # Create a range of gradient values
+    gradient_range = np.linspace(min_gradient, max_gradient, num=n)
+
+    # Find the insertion point for each threshold in the sorted gradient column
+    counts = []
+    for threshold in gradient_range:
+        count = (df['gradient'] >= threshold).astype(int).sum()
+        percentage = (count / total_nodes) * 100
+        counts.append(percentage)
+
+    # counts = np.searchsorted(df['gradient'].values, gradient_range, side='right')
+    # ^ this didn't work
+
+    # Plot the gradient counts
+    plt.plot(gradient_range, counts, marker='o')
+    plt.xlabel('Threshold')
+    plt.ylabel('Rows [%]')
+    plt.title(f'{protein}')
+    plt.grid(True)
+    plt.show()
+
+    # TODO: save
 
 
 @tf.function
