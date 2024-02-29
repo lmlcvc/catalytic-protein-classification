@@ -25,12 +25,11 @@ node_feature_names = ["Residue name",
                       "Z coordinate"]
 
 
-def plot_gradients(protein, df, n=20):
+def plot_gradients(df, n=20):
     """
     Plot how many nodes pass gradient thresholds from a range of n elements.
 
     Args:
-        protein: protein name
         df: sorted dataframe matching gradient values to row index (index in protein)
         n: number of thresholds in range
 
@@ -59,7 +58,7 @@ def plot_gradients(protein, df, n=20):
     plt.plot(gradient_range, counts, marker='o')
     plt.xlabel('Threshold')
     plt.ylabel('Rows [%]')
-    plt.title(f'{protein}')
+    plt.title(f'Overall')
     plt.grid(True)
     plt.show()
 

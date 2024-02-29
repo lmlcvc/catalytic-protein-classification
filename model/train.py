@@ -2,6 +2,7 @@ import configparser
 import csv
 import os
 
+import pandas as pd
 import tensorflow.keras as keras
 import numpy as np
 from matplotlib import pyplot as plt
@@ -106,14 +107,16 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
         print(f"Test set size: {len(test_index)} graphs")
 
         #####
-        most_relevant_nodes = {}
+        protein_dataframes = []
         for idx, graph in enumerate(test_index):
+            protein = graph_labels.index[idx]
             inputs = training_tensors[idx][0]
 
             gradients = vu.get_gradients(model, inputs)
             node_gradients = gradients[0]
             edge_gradients = gradients[-1]
-            most_relevant_nodes[graph_labels.index[idx]] = au.extract_relevant_gradients(node_gradients)
+            # most_relevant_nodes[graph_labels.index[idx]] = au.extract_relevant_gradients(node_gradients)
+            protein_dataframes.append(au.extract_relevant_gradients(protein, node_gradients))
 
             # Saliency maps
             """node_saliency_map = vu.calculate_node_saliency(gradients[0])
@@ -128,9 +131,13 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
             # and we managed to match the protein to its label
             # therefore it is able to compare results to ground truth
             # set thresholds to a range of values in order to plot
-        print(f"SORTED GRADIENTS:\n{most_relevant_nodes}\n")
-        for protein, df in most_relevant_nodes.items():
-            vu.plot_gradients(protein, df)
+        most_relevant_nodes = pd.concat(protein_dataframes, ignore_index=True)
+        print(f'GRADIENTS:\n{most_relevant_nodes}')
+        most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
+        print(f"SORTED GRADIENTS:\n{most_relevant_nodes_sorted}\n")
+        # for protein, df in most_relevant_nodes.items():
+        #     vu.plot_gradients(protein, df)
+        vu.plot_gradients(most_relevant_nodes_sorted)
         #####
 
         if max(metrics["val_acc"]) > best_acc:

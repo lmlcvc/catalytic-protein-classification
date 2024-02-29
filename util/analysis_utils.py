@@ -197,7 +197,7 @@ def extract_popular_aas(run_dir, top_n=5):
     df.to_csv(output_csv_path, index=False)
 
 
-def extract_relevant_gradients(gradients):
+def extract_relevant_gradients(protein, gradients):
     # Min-max normalisation for each tensor
     min_values = [tf.reduce_min(tensor) for tensor in gradients]
     max_values = [tf.reduce_max(tensor) for tensor in gradients]
@@ -207,25 +207,18 @@ def extract_relevant_gradients(gradients):
 
     all_gradients = pd.DataFrame(np.concatenate(normalised_tensors, axis=0))  # reshaping
 
+    # gradient column
     max_values = all_gradients.max(axis=1)
     max_gradients = pd.DataFrame({'gradient': max_values})
 
-    max_gradients_sorted = max_gradients.sort_values(by='gradient', ascending=False)
+    # index column
+    max_gradients.reset_index(inplace=True)
+    max_gradients.rename(columns={'index': 'index'}, inplace=True)
 
-    # print(max_gradients_sorted)
+    # protein column
+    max_gradients['protein'] = protein
 
-    """ # Extract relevant gradients for each feature
-        filtered_nodes = []
-        for col_idx, threshold in enumerate(thresholds):
-            column = all_gradients[col_idx]
-            filtered_nodes.append(column[column > threshold].index.tolist())
-
-        flat_list = [(item + 1) for sublist in filtered_nodes for item in sublist]
-        unique_nodes = list(set(flat_list))
-
-        return unique_nodes"""
-
-    return max_gradients_sorted
+    return max_gradients
 
 
 def active_site_comparison(data, output_dir):
