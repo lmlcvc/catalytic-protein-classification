@@ -115,7 +115,6 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
             gradients = vu.get_gradients(model, inputs)
             node_gradients = gradients[0]
             edge_gradients = gradients[-1]
-            # most_relevant_nodes[graph_labels.index[idx]] = au.extract_relevant_gradients(node_gradients)
             protein_dataframes.append(au.extract_relevant_gradients(protein, node_gradients))
 
             # Saliency maps
@@ -126,18 +125,11 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
             vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
             vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))"""
 
-            # TODO: plot gradient/node count and gradient/real active site node count
-            # by now we managed to order the gradients by size
-            # and we managed to match the protein to its label
-            # therefore it is able to compare results to ground truth
-            # set thresholds to a range of values in order to plot
         most_relevant_nodes = pd.concat(protein_dataframes, ignore_index=True)
-        print(f'GRADIENTS:\n{most_relevant_nodes}')
         most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
-        print(f"SORTED GRADIENTS:\n{most_relevant_nodes_sorted}\n")
-        # for protein, df in most_relevant_nodes.items():
-        #     vu.plot_gradients(protein, df)
-        vu.plot_gradients(most_relevant_nodes_sorted)
+        active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
+
+        vu.plot_gradients(most_relevant_nodes_sorted, as_df=active_site_nodes)
         #####
 
         if max(metrics["val_acc"]) > best_acc:

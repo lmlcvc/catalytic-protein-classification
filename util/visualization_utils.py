@@ -25,12 +25,13 @@ node_feature_names = ["Residue name",
                       "Z coordinate"]
 
 
-def plot_gradients(df, n=20):
+def plot_gradients(df, as_df=None, n=20):
     """
     Plot how many nodes pass gradient thresholds from a range of n elements.
 
     Args:
         df: sorted dataframe matching gradient values to row index (index in protein)
+        as_df: dataframe containing gradient info only for confirmed active site nodes
         n: number of thresholds in range
 
     Returns:
@@ -51,15 +52,24 @@ def plot_gradients(df, n=20):
         percentage = (count / total_nodes) * 100
         counts.append(percentage)
 
-    # counts = np.searchsorted(df['gradient'].values, gradient_range, side='right')
-    # ^ this didn't work
-
     # Plot the gradient counts
-    plt.plot(gradient_range, counts, marker='o')
+    plt.plot(gradient_range, counts, marker='o', label = 'overall')
+
+    # Plot the gradient counts for as_df if provided
+    if as_df is not None:
+        total_as_nodes = len(as_df)
+        as_counts = []
+        for threshold in gradient_range:
+            count = (as_df['gradient'] >= threshold).astype(int).sum()
+            percentage = (count / total_as_nodes) * 100
+            as_counts.append(percentage)
+        plt.plot(gradient_range, as_counts, marker='o', color='red', label='active site')
+
     plt.xlabel('Threshold')
     plt.ylabel('Rows [%]')
-    plt.title(f'Overall')
+    plt.title('Proportion of nodes over gradient threshold')
     plt.grid(True)
+    plt.legend()
     plt.show()
 
     # TODO: save
