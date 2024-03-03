@@ -222,6 +222,16 @@ def visualize_training(histories, figsize=(10, 6), dpi=300):
     plt.savefig(os.path.join(model_dir, 'training_loss.png'))
     plt.close()
 
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['val_loss'], label=f"Fold {i + 1}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Validation Loss')
+    plt.legend()
+    plt.savefig(os.path.join(model_dir, 'validation_loss.png'))
+    plt.close()
+
     # Plot accuracy
     plt.figure(figsize=figsize, dpi=dpi)
     for i, history in enumerate(histories):
