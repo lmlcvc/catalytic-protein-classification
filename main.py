@@ -142,12 +142,12 @@ def load_model():
     return model
 
 
-def perform_model_training(generator, labels):
+def perform_model_training(generator, labels, run_dir, training_tensors):
     model = None
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
             # Create and train classification models
-            model = train_model(generator, labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(generator, labels, run_dir, training_tensors, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -158,7 +158,7 @@ def perform_model_training(generator, labels):
         if "gcn_model.h5" not in os.listdir(model_dir):
             if demo_run.lower() == "y":
                 # Create and train classification models
-                model = train_model(generator, labels, epochs=3, folds=3, n_repeats=3)
+                model = train_model(generator, labels, run_dir, training_tensors, epochs=3, folds=2, n_repeats=1)
                 print(model.summary())
 
                 # Save the model
@@ -166,7 +166,7 @@ def perform_model_training(generator, labels):
                 print("Demo GCN model trained and saved successfully.")
             else:
                 # Create and train classification models
-                model = train_model(generator, labels, epochs=100, folds=10, n_repeats=1)
+                model = train_model(generator, labels, run_dir, training_tensors, epochs=100, folds=10, n_repeats=1)
                 print(model.summary())
 
                 # Save the model
@@ -184,6 +184,20 @@ if __name__ == "__main__":
 
     check_and_generate_targets()
 
+    # Initialise visualisation/run directory
+    fu.create_folder(visualization_dir)
+
+    run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
+    run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
+
+    # Initialise analysis directories
+    fu.create_folder(analysis_dir)
+    analysis_run_dir = os.path.join(os.path.join(analysis_dir, f"{run_timestamp}"))
+    os.mkdir(analysis_run_dir)
+
+    os.mkdir(os.path.join(analysis_run_dir, "amino_acids"))
+
     # Load or generate graphs
     generate_graphs()
 
@@ -199,25 +213,11 @@ if __name__ == "__main__":
 
     # Load or train model
     if not load_model():
-        model = perform_model_training(graph_generator, train_labels)
+        model = perform_model_training(graph_generator, train_labels, run_dir, training_tensors)
     else:
         model = load_model()
         if model is None:
             raise ValueError("Model cannot be None")
-
-    # Initialise visualisation/run directory
-    fu.create_folder(visualization_dir)
-
-    run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    os.mkdir(os.path.join(visualization_dir, f"{run_timestamp}"))
-    run_dir = os.path.join(os.path.join(visualization_dir, f"{run_timestamp}"))
-
-    # Initialise analysis directories
-    fu.create_folder(analysis_dir)
-    analysis_run_dir = os.path.join(os.path.join(analysis_dir, f"{run_timestamp}"))
-    os.mkdir(analysis_run_dir)
-
-    os.mkdir(os.path.join(analysis_run_dir, "amino_acids"))
 
     # Make predictions using the loaded model
     predictions = model.predict(inference_tensors)
