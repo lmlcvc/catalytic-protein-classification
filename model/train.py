@@ -86,6 +86,8 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
     )
 
     run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    node_dataframes = []
+    edge_dataframes = []
     for i, (train_index, test_index) in enumerate(stratified_folds):
         print(f"Training and evaluating on fold {i + 1} out of {folds * n_repeats}...")
         train_gen, test_gen = get_generators(
@@ -106,8 +108,6 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
         print(f"Train set size: {len(train_index)} graphs")
         print(f"Test set size: {len(test_index)} graphs")
 
-        node_dataframes = []
-        edge_dataframes = []
         for idx, graph in enumerate(test_index):
             protein = graph_labels.index[idx]
             inputs = training_tensors[idx][0]
@@ -119,25 +119,6 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
             node_dataframes.append(au.extract_relevant_gradients(protein, node_gradients))
             edge_dataframes.append(au.extract_relevant_gradients(protein, edge_gradients))
 
-            # Saliency maps
-            node_saliency_map = vu.calculate_node_saliency(gradients[0])
-            edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
-
-            # Visualize the saliency maps and save them as images
-            vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-            vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
-
-        most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
-        most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
-        active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
-
-        most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
-        most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
-        active_site_edges = au.filter_active_site_gradients(most_relevant_edges_sorted)
-
-        vu.plot_gradients(most_relevant_nodes_sorted, mode='node', output_dir=run_dir, as_df=active_site_nodes)
-        vu.plot_gradients(most_relevant_edges_sorted, mode='edge', output_dir=run_dir, as_df=active_site_edges)
-
         if max(metrics["val_acc"]) > best_acc:
             best_acc = max(metrics["val_acc"])
             best_model = model
@@ -147,6 +128,18 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
     )
 
     vu.visualize_training(all_histories)
+
+    # TODO: function
+    most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
+    most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
+    active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
+
+    most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
+    most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
+    active_site_edges = au.filter_active_site_gradients(most_relevant_edges_sorted)
+
+    vu.plot_gradients(most_relevant_nodes_sorted, mode='validation_node', output_dir=run_dir, as_df=active_site_nodes)
+    vu.plot_gradients(most_relevant_edges_sorted, mode='validation_edge', output_dir=run_dir, as_df=active_site_edges)
 
     plt.figure(figsize=(8, 6))
     plt.hist(test_accs)

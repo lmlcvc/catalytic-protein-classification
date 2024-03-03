@@ -251,7 +251,7 @@ def active_site_comparison(data, output_dir):
         if protein not in inference_proteins:
             print(f"{protein} not in inference. Skipping.")
         else:
-            nodes_list = data[protein]
+            nodes_list = data[protein] #FIXME: data[protein] is now a df
             res1 = int(row['Residue_1'])
             res2 = int(row['Residue_2'])
             res3 = int(row['Residue_3'])

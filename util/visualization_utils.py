@@ -40,6 +40,8 @@ def plot_gradients(df, mode, output_dir, as_df=None, n=20):
 
     """
 
+    plt.clf()
+
     total_nodes = len(df)
     max_gradient = df.iloc[0]['gradient']
     min_gradient = df.iloc[-1]['gradient']
@@ -73,6 +75,7 @@ def plot_gradients(df, mode, output_dir, as_df=None, n=20):
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(output_dir, f'gradient_thresholds_{mode}.png'))
+    plt.show()
 
 
 @tf.function

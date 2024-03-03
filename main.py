@@ -244,10 +244,14 @@ if __name__ == "__main__":
 
     ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
 
-    most_relevant_nodes = {}  # dict of protein: [nodes with the largest gradients]
+    relevant_nodes_dict = {}  # dict of protein: [nodes with the largest gradients]
+    node_dataframes = []
+    edge_dataframes = []
     for i, graph in enumerate(test_graphs):
+        protein = test_labels.index[i]
+
         prediction = binary_predictions[i][0]
-        print(f"Graph {i + 1} - {test_labels.index[i]}:\n"
+        print(f"Graph {i + 1} - {protein}:\n"
               f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(test_labels[i])}\n")
 
         # Get the input features for the sample
@@ -260,8 +264,6 @@ if __name__ == "__main__":
         gradients = vu.get_gradients(model, inputs)
         node_gradients = gradients[0]
         edge_gradients = gradients[-1]
-
-        most_relevant_nodes[test_labels.index[i]] = au.extract_relevant_gradients(node_gradients)
 
         # Saliency maps
         node_saliency_map = vu.calculate_node_saliency(gradients[0])
@@ -290,12 +292,34 @@ if __name__ == "__main__":
             features_ranked_all[feature_index][rank - 1] += 1
 
         # Visualize the saliency maps and save them as images
-        vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+        # TODO: fix features lists and uncomment
+        """vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))"""
+
+        # Save relevant gradients for plotting and analysis
+        node_df = au.extract_relevant_gradients(protein, node_gradients)
+        node_dataframes.append(node_df)
+        relevant_nodes_dict[protein] = node_df
+
+        edge_df = au.extract_relevant_gradients(protein, edge_gradients)
+        edge_dataframes.append(edge_df)
+
+    # Testing set gradient plotting
+    most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
+    most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
+    active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
+
+    most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
+    most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
+    active_site_edges = au.filter_active_site_gradients(most_relevant_edges_sorted)
+
+    vu.plot_gradients(most_relevant_nodes_sorted, mode='testing_node', output_dir=run_dir, as_df=active_site_nodes)
+    vu.plot_gradients(most_relevant_edges_sorted, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)
 
     # Active site comparison (gradient vs. ground truth)
-    au.active_site_comparison(most_relevant_nodes, analysis_run_dir)
-    au.generate_triad_combinations(most_relevant_nodes, analysis_run_dir)
+    # TODO: uncomment after fixme is solved
+    # au.active_site_comparison(relevant_nodes_dict, analysis_run_dir)
+    # au.generate_triad_combinations(relevant_nodes_dict, analysis_run_dir)
 
     # class-aggregated analysis
     au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
@@ -306,4 +330,4 @@ if __name__ == "__main__":
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
     vu.evaluate_model(binary_predictions, test_labels, both_classes_present=True)
-    vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
+    # vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
