@@ -106,8 +106,8 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
         print(f"Train set size: {len(train_index)} graphs")
         print(f"Test set size: {len(test_index)} graphs")
 
-        #####
-        protein_dataframes = []
+        node_dataframes = []
+        edge_dataframes = []
         for idx, graph in enumerate(test_index):
             protein = graph_labels.index[idx]
             inputs = training_tensors[idx][0]
@@ -115,22 +115,28 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
             gradients = vu.get_gradients(model, inputs)
             node_gradients = gradients[0]
             edge_gradients = gradients[-1]
-            protein_dataframes.append(au.extract_relevant_gradients(protein, node_gradients))
+
+            node_dataframes.append(au.extract_relevant_gradients(protein, node_gradients))
+            edge_dataframes.append(au.extract_relevant_gradients(protein, edge_gradients))
 
             # Saliency maps
-            """node_saliency_map = vu.calculate_node_saliency(gradients[0])
+            node_saliency_map = vu.calculate_node_saliency(gradients[0])
             edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
-    
+
             # Visualize the saliency maps and save them as images
             vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-            vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))"""
+            vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
-        most_relevant_nodes = pd.concat(protein_dataframes, ignore_index=True)
+        most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
         most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
         active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
 
-        vu.plot_gradients(most_relevant_nodes_sorted, as_df=active_site_nodes)
-        #####
+        most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
+        most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
+        active_site_edges = au.filter_active_site_gradients(most_relevant_edges_sorted)
+
+        vu.plot_gradients(most_relevant_nodes_sorted, mode='node', output_dir=run_dir, as_df=active_site_nodes)
+        vu.plot_gradients(most_relevant_edges_sorted, mode='edge', output_dir=run_dir, as_df=active_site_edges)
 
         if max(metrics["val_acc"]) > best_acc:
             best_acc = max(metrics["val_acc"])

@@ -25,12 +25,14 @@ node_feature_names = ["Residue name",
                       "Z coordinate"]
 
 
-def plot_gradients(df, as_df=None, n=20):
+def plot_gradients(df, mode, output_dir, as_df=None, n=20):
     """
     Plot how many nodes pass gradient thresholds from a range of n elements.
 
     Args:
         df: sorted dataframe matching gradient values to row index (index in protein)
+        mode: one of 'node', 'edge'
+        output_dir: dir path to save the figure
         as_df: dataframe containing gradient info only for confirmed active site nodes
         n: number of thresholds in range
 
@@ -67,12 +69,10 @@ def plot_gradients(df, as_df=None, n=20):
 
     plt.xlabel('Threshold')
     plt.ylabel('Rows [%]')
-    plt.title('Proportion of nodes over gradient threshold')
+    plt.title(f'Proportion of {mode}s over gradient threshold')
     plt.grid(True)
     plt.legend()
-    plt.show()
-
-    # TODO: save
+    plt.savefig(os.path.join(output_dir, f'gradient_thresholds_{mode}.png'))
 
 
 @tf.function
