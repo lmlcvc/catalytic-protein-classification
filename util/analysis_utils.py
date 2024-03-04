@@ -227,7 +227,10 @@ def filter_active_site_gradients(full_df):
     df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
     df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
 
-    filtered_df = full_df[full_df['protein'].isin(df['PDB_ID'])]
+    filtered_df = full_df[(full_df['protein'].isin(df['PDB_ID'])) &
+                          ((full_df.index.isin(df['Residue_1'])) |
+                           (full_df.index.isin(df['Residue_2'])) |
+                           (full_df.index.isin(df['Residue_3'])))]
 
     return filtered_df
 
@@ -251,7 +254,7 @@ def active_site_comparison(data, output_dir):
         if protein not in inference_proteins:
             print(f"{protein} not in inference. Skipping.")
         else:
-            nodes_list = data[protein] #FIXME: data[protein] is now a df
+            nodes_list = data[protein]  # FIXME: data[protein] is now a df
             res1 = int(row['Residue_1'])
             res2 = int(row['Residue_2'])
             res3 = int(row['Residue_3'])
