@@ -18,6 +18,7 @@ config = config['default']
 model_dir = config['model_dir']
 analysis_dir = config['analysis_dir']
 targets_dir = config['targets_dir']
+graph_dir = config['graph_dir']
 aas_dir = config['aas_dir']
 
 node_feature_names = ["Residue name",
@@ -197,7 +198,7 @@ def extract_popular_aas(run_dir, top_n=5):
     df.to_csv(output_csv_path, index=False)
 
 
-def extract_relevant_gradients(protein, gradients):
+def extract_relevant_gradients(protein, gradients, mode):
     # Min-max normalisation for each tensor
     min_values = [tf.reduce_min(tensor) for tensor in gradients]
     max_values = [tf.reduce_max(tensor) for tensor in gradients]
@@ -212,8 +213,24 @@ def extract_relevant_gradients(protein, gradients):
     max_gradients = pd.DataFrame({'gradient': max_values})
 
     # index column
-    max_gradients.reset_index(inplace=True)
-    max_gradients.rename(columns={'index': 'index'}, inplace=True)
+    if mode == 'node':
+        max_gradients.reset_index(inplace=True)
+        max_gradients.rename(columns={'index': 'index'}, inplace=True)
+    elif mode == 'edge':
+        edge_df = pd.read_csv(os.path.join(graph_dir, f'{protein}_edges.csv'))
+
+        # Extract numbers from the source and target columns
+        max_gradients['source_index'] = edge_df['source'].str.extract(r'(\d+)')
+        max_gradients['target_index'] = edge_df['target'].str.extract(r'(\d+)')
+
+        # Drop rows containing NaN values in 'source_index' or 'target_index' columns
+        max_gradients.dropna(subset=['source_index', 'target_index'], inplace=True)
+
+        # Convert the extracted numbers to integers
+        max_gradients['source_index'] = max_gradients['source_index'].astype(int)
+        max_gradients['target_index'] = max_gradients['target_index'].astype(int)
+    else:
+        raise ValueError('Mode must be one of: ["node", "edge"].')
 
     # protein column
     max_gradients['protein'] = protein
@@ -221,7 +238,7 @@ def extract_relevant_gradients(protein, gradients):
     return max_gradients
 
 
-def filter_active_site_gradients(full_df):
+def filter_active_site_gradients_node(full_df):
     df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep="\s+", skip_blank_lines=True,
                      na_values=[''])
     df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
@@ -231,6 +248,23 @@ def filter_active_site_gradients(full_df):
                           ((full_df.index.isin(df['Residue_1'])) |
                            (full_df.index.isin(df['Residue_2'])) |
                            (full_df.index.isin(df['Residue_3'])))]
+
+    return filtered_df
+
+
+def filter_active_site_gradients_edges(full_df):
+    df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep="\s+", skip_blank_lines=True,
+                     na_values=[''])
+    df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
+    df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
+
+    filtered_df = full_df[(full_df['protein'].isin(df['PDB_ID'])) &
+                          ((full_df['source_index'].isin(df['Residue_1'])) |
+                           (full_df['source_index'].isin(df['Residue_2'])) |
+                           (full_df['source_index'].isin(df['Residue_3'])) |
+                           (full_df['target_index'].isin(df['Residue_1'])) |
+                           (full_df['target_index'].isin(df['Residue_2'])) |
+                           (full_df['target_index'].isin(df['Residue_3'])))]
 
     return filtered_df
 

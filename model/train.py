@@ -116,8 +116,8 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
             node_gradients = gradients[0]
             edge_gradients = gradients[-1]
 
-            node_dataframes.append(au.extract_relevant_gradients(protein, node_gradients))
-            edge_dataframes.append(au.extract_relevant_gradients(protein, edge_gradients))
+            node_dataframes.append(au.extract_relevant_gradients(protein, node_gradients, mode='node'))
+            edge_dataframes.append(au.extract_relevant_gradients(protein, edge_gradients, mode='edge'))
 
         if max(metrics["val_acc"]) > best_acc:
             best_acc = max(metrics["val_acc"])
@@ -132,11 +132,11 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
     # TODO: function
     most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
     most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
-    active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
+    active_site_nodes = au.filter_active_site_gradients_node(most_relevant_nodes_sorted)
 
     most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
     most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
-    active_site_edges = au.filter_active_site_gradients(most_relevant_edges_sorted)
+    active_site_edges = au.filter_active_site_gradients_edges(most_relevant_edges_sorted)
 
     vu.plot_gradients(most_relevant_nodes_sorted, mode='validation_node', output_dir=run_dir, as_df=active_site_nodes)
     vu.plot_gradients(most_relevant_edges_sorted, mode='validation_edge', output_dir=run_dir, as_df=active_site_edges)

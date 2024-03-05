@@ -297,21 +297,23 @@ if __name__ == "__main__":
         vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))"""
 
         # Save relevant gradients for plotting and analysis
-        node_df = au.extract_relevant_gradients(protein, node_gradients)
+        node_df = au.extract_relevant_gradients(protein, node_gradients, mode='node')
         node_dataframes.append(node_df)
         relevant_nodes_dict[protein] = node_df
 
-        edge_df = au.extract_relevant_gradients(protein, edge_gradients)
+        edge_df = au.extract_relevant_gradients(protein, edge_gradients, mode='edge')
         edge_dataframes.append(edge_df)
 
     # Testing set gradient plotting
     most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
     most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
-    active_site_nodes = au.filter_active_site_gradients(most_relevant_nodes_sorted)
+    active_site_nodes = au.filter_active_site_gradients_node(most_relevant_nodes_sorted)
 
     most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
     most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
-    active_site_edges = au.filter_active_site_gradients(most_relevant_edges_sorted)
+    active_site_edges = au.filter_active_site_gradients_edges(most_relevant_edges_sorted)
+
+    print(most_relevant_nodes, most_relevant_edges)
 
     vu.plot_gradients(most_relevant_nodes_sorted, mode='testing_node', output_dir=run_dir, as_df=active_site_nodes)
     vu.plot_gradients(most_relevant_edges_sorted, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)
