@@ -286,7 +286,7 @@ if __name__ == "__main__":
 
         # Print feature importance ranking
         for rank, feature_index in enumerate(feature_ranking):
-            features_ranked_total[feature_index][rank - 1] += 1
+            features_ranked_total[feature_index][rank] += 1
             print(f"Rank {rank + 1}: Feature {feature_index}")
 
         # Visualize the saliency maps and save them as images

@@ -166,10 +166,10 @@ def visualise_predictions(predictions, truth_labels, output_dir, category_count=
 
     plt.xlabel('Prediction Category')
     plt.ylabel('Count')
-    plt.title('Distribution of Non-catalytic Predictions')
+    plt.title('Distribution of Negative Class Predictions')
     plt.xticks(non_catalytic_x)
     plt.legend()
-    plt.savefig(os.path.join(output_dir, 'non_catalytic_predictions_histogram'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'negative_predictions_histogram'), bbox_inches='tight')
 
     plt.figure(figsize=(8, 6))
     plt.bar(catalytic_x[:-1], np.histogram(catalytic_predictions, bins=catalytic_x)[0],
@@ -181,10 +181,10 @@ def visualise_predictions(predictions, truth_labels, output_dir, category_count=
 
     plt.xlabel('Prediction Category')
     plt.ylabel('Count')
-    plt.title('Distribution of Catalytic Predictions')
+    plt.title('Distribution of Positive Class Predictions')
     plt.xticks(catalytic_x)
     plt.legend()
-    plt.savefig(os.path.join(output_dir, 'catalytic_predictions_histogram'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, 'positive_predictions_histogram'), bbox_inches='tight')
 
 
 def visualize_training(histories, figsize=(10, 6), dpi=300):

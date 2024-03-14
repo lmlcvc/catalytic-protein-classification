@@ -223,14 +223,18 @@ def generate_ground_truth(pdb_source_directory):
     targets_file.write("\n".join(line for line in lines_filtered))
 
 
+def generate_monomer_map(monomer_df):
+    monomer_df['CXSMILES'] = monomer_df.apply(lambda row: row['CXSMILES'].replace('_R3', row['R3']), axis=1)
+    return pd.Series(monomer_df.CXSMILES.values, index=monomer_df.Symbol).to_dict()
+
+
 def generate_SMILES(monomer_df, cycpep_df):
     """
     Generate file with full SMILES and permeability values for each cyclic peptide
     """
     smiles_df = pd.DataFrame(columns=['ID', 'SMILES', 'permeability'])
 
-    # monomer_map = pd.Series(monomer_df.replaced_SMILES.values, index=monomer_df.Symbol).to_dict()
-    monomer_map = pd.Series(monomer_df.CXSMILES.values, index=monomer_df.Symbol).to_dict()
+    monomer_map = generate_monomer_map(monomer_df)
 
     for _, row in cycpep_df.iterrows():
         seq = ast.literal_eval(row.Sequence)

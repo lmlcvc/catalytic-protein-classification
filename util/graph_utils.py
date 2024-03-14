@@ -183,7 +183,7 @@ def prepare_edges_molecular(edges):
     edges['bond_stereo'] = bonds.apply(lambda x: x.GetStereo())
 
     # remove unnecessary columns
-    edges = edges.drop(['kind', 'bond'], axis=1)
+    edges = edges.drop(['_aromatic', 'conjugated', 'kind', 'bond'], axis=1)
 
     return edges
 
