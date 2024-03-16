@@ -57,7 +57,7 @@ def plot_gradients(df, mode, output_dir, as_df=None, n=20):
         counts.append(percentage)
 
     # Plot the gradient counts
-    plt.plot(gradient_range, counts, marker='o', label = 'overall')
+    plt.plot(gradient_range, counts, marker='o', label='overall')
 
     # Plot the gradient counts for as_df if provided
     if as_df is not None:
@@ -254,6 +254,46 @@ def visualize_training(histories, figsize=(10, 6), dpi=300):
     plt.title('Validation Accuracy')
     plt.legend()
     plt.savefig(os.path.join(model_dir, 'validation_accuracy.png'))
+    plt.close()
+
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['precision'], label=f"Fold {i + 1}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Training Precision')
+    plt.title('Training Precision')
+    plt.legend()
+    plt.savefig(os.path.join(model_dir, 'training_precision.png'))
+    plt.close()
+
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['val_precision'], label=f"Fold {i + 1}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Validation Precision')
+    plt.title('Validation Precision')
+    plt.legend()
+    plt.savefig(os.path.join(model_dir, 'validation_precision.png'))
+    plt.close()
+
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['recall'], label=f"Fold {i + 1}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Training Recall')
+    plt.title('Training Recall')
+    plt.legend()
+    plt.savefig(os.path.join(model_dir, 'training_recall.png'))
+    plt.close()
+
+    plt.figure(figsize=figsize, dpi=dpi)
+    for i, history in enumerate(histories):
+        plt.plot(history.history['val_recall'], label=f"Fold {i + 1}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Validation Recall')
+    plt.title('Validation Recall')
+    plt.legend()
+    plt.savefig(os.path.join(model_dir, 'validation_recall.png'))
     plt.close()
 
 
