@@ -2,7 +2,6 @@ import configparser
 import logging
 import os.path
 
-import graphein.protein.features.nodes.amino_acid
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -14,6 +13,7 @@ from graphein.protein.edges.atomic import add_atomic_edges
 from graphein.protein.graphs import construct_graph
 from graphein.protein.visualisation import plotly_protein_structure_graph
 from stellargraph import StellarGraph
+from functools import partial
 
 import util.file_utils as fu
 
@@ -41,7 +41,8 @@ if graph_type == "residue":
         distance.add_disulfide_interactions,
         distance.add_hydrogen_bond_interactions,
         distance.add_hydrophobic_interactions,
-        distance.add_ionic_interactions
+        distance.add_ionic_interactions,
+        partial(distance.add_distance_threshold, long_interaction_threshold=2, threshold=5.0)
         # intramolecular.pi_stacking
         # intramolecular.salt_bridge,
         # intramolecular.t_stacking,
@@ -142,7 +143,7 @@ def prepare_edges(edges):
         edge_kinds = ["aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic", "ionic",
                       "protein_bond"]
 
-        # --- One-hot ---
+        # --- Encoding ---
         # Split the values in the 'kind' column and create new columns for each edge kind
         edge_kinds_encoded = pd.DataFrame()
         for kind in edge_kinds:
