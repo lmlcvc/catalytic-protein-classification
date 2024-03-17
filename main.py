@@ -292,9 +292,8 @@ if __name__ == "__main__":
             features_ranked_all[feature_index][rank - 1] += 1
 
         # Visualize the saliency maps and save them as images
-        # TODO: fix features lists and uncomment
-        """vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))"""
+        vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+        # vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
         # Save relevant gradients for plotting and analysis
         node_df = au.extract_relevant_gradients(protein, node_gradients, mode='node')

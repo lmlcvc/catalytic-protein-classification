@@ -24,6 +24,11 @@ node_feature_names = ["Residue name",
                       "Y coordinate",
                       "Z coordinate"]
 
+edge_feature_names = [
+    "source", "target", "distance", "aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic",
+    "ionic", "protein_bond"
+]
+
 
 def plot_gradients(df, mode, output_dir, as_df=None, n=20):
     """
@@ -75,7 +80,6 @@ def plot_gradients(df, mode, output_dir, as_df=None, n=20):
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(output_dir, f'gradient_thresholds_{mode}.png'))
-    plt.show()
 
 
 @tf.function
@@ -119,21 +123,21 @@ def visualize_node_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     cbar = plt.colorbar()
     cbar.ax.set_ylabel('Saliency')
     plt.xlabel('Node Index')
-    plt.ylabel('Feature Index')
+    plt.ylabel('Feature')
     plt.yticks(range(len(node_feature_names)), node_feature_names)
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
-    # plt.show()
     plt.close()
 
 
 def visualize_edge_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.figure(figsize=figsize, dpi=dpi)
-    plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='equal')
+    plt.imshow(heatmap, cmap='hot', interpolation='nearest', aspect='auto')
     cbar = plt.colorbar()
     cbar.ax.set_ylabel('Saliency')
-    plt.xlabel('Source Node Index')
-    plt.ylabel('Target Node Index')
+    plt.xlabel('Edge Index')
+    plt.ylabel('Feature')
+    plt.yticks(range(len(edge_feature_names)), edge_feature_names)
     plt.tight_layout()
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
