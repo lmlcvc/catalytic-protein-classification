@@ -223,8 +223,7 @@ if __name__ == "__main__":
     predictions = model.predict(inference_tensors)
 
     # Visualise predictions histogram
-    # TODO: uncomment when fixed & pass testing graphs as obj
-    # vu.visualise_predictions(predictions, test_labels.to_list(), os.path.join(run_dir, "predictions"))
+    vu.visualise_predictions(predictions, test_labels.to_list(), os.path.join(run_dir, "predictions"))
 
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
@@ -311,8 +310,6 @@ if __name__ == "__main__":
     most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
     most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
     active_site_edges = au.filter_active_site_gradients_edges(most_relevant_edges_sorted)
-
-    print(most_relevant_nodes, most_relevant_edges)
 
     vu.plot_gradients(most_relevant_nodes_sorted, mode='testing_node', output_dir=run_dir, as_df=active_site_nodes)
     vu.plot_gradients(most_relevant_edges_sorted, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)

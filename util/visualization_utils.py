@@ -143,25 +143,23 @@ def visualize_edge_heatmap(heatmap, filename, figsize=(10, 8), dpi=300):
     plt.close()
 
 
-def calculate_prediction_counts(predictions, truth_labels, neg_category_count=12, pos_category_count=8):
-    # TODO: threshold could be not hardcoded
-    # then calc category counts with parameters of threshold & range
+def calculate_prediction_counts(predictions, truth_labels, category_count):
     non_catalytic_predictions = []
     catalytic_predictions = []
 
-    non_catalytic_false_counts = np.zeros(neg_category_count)
-    catalytic_false_counts = np.zeros(pos_category_count)
+    non_catalytic_false_counts = np.zeros(category_count)
+    catalytic_false_counts = np.zeros(category_count)
 
     for prediction, truth_label in zip(predictions, truth_labels):
         category_value = int(prediction * 10) / 10
-        if 0 <= prediction < 0.6:
-            if int(truth_label) != 0:
-                non_catalytic_false_counts[int(category_value * neg_category_count)] += 1
+        if 0 <= prediction < 0.5:
+            if np.round(prediction) != truth_label:
+                non_catalytic_false_counts[int(category_value * category_count)] += 1
             else:
                 non_catalytic_predictions.append(category_value)
-        elif 0.6 <= prediction <= 1:
-            if int(truth_label) != 1:
-                catalytic_false_counts[int((category_value - 0.6) * pos_category_count)] += 1
+        elif 0.5 <= prediction <= 1:
+            if np.round(prediction) != truth_label:
+                catalytic_false_counts[int((category_value - 0.5) * category_count)] += 1
             else:
                 catalytic_predictions.append(category_value)
         else:
@@ -181,14 +179,13 @@ def visualise_predictions(predictions, truth_labels, output_dir, category_count=
     total_categories = category_count * 2
     category_width = 1.0 / total_categories
 
-    non_catalytic_x = np.arange(0, 0.6 + category_width, category_width)
-    catalytic_x = np.arange(0.6, 1 + category_width, category_width)
+    non_catalytic_x = np.arange(0, 0.5 + category_width, category_width)
+    catalytic_x = np.arange(0.5, 1 + category_width, category_width)
 
     plt.figure(figsize=(8, 6))
     plt.bar(non_catalytic_x[:-1], np.histogram(non_catalytic_predictions, bins=non_catalytic_x)[0],
             width=0.9 * category_width, align='edge', label='True', color='blue')
 
-    # FIXME: ValueError: shape mismatch: objects cannot be broadcast to a single shape.  Mismatch is between arg 0 with shape (12,) and arg 1 with shape (10,).
     plt.bar(non_catalytic_x[:-1], non_catalytic_false_counts,
             width=0.9 * category_width, align='edge',
             bottom=np.histogram(non_catalytic_predictions, bins=non_catalytic_x)[0],
