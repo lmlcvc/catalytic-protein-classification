@@ -315,7 +315,7 @@ if __name__ == "__main__":
     vu.plot_gradients(most_relevant_edges_sorted, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)
 
     # Active site comparison (gradient vs. ground truth)
-    # TODO: uncomment after fixme is solved
+    # TODO: uncomment after determining threshold
     # au.active_site_comparison(relevant_nodes_dict, analysis_run_dir)
     # au.generate_triad_combinations(relevant_nodes_dict, analysis_run_dir)
 

@@ -271,8 +271,11 @@ def filter_active_site_gradients_edges(full_df):
 
 def active_site_comparison(data, output_dir):
     """
+    Compare whether the most relevant nodes of a graph correspond to confirmed active sites.
+    Write down results as csv.
+    TODO: determine relevance gradient threshold and then reimplement
     Args:
-        data: dict - a dictionary containing all relevant nodes per protein
+        data: dict - a dictionary containing all nodes per protein
         output_dir: str - the directory for saving the result csv
     Returns:
 
@@ -288,7 +291,7 @@ def active_site_comparison(data, output_dir):
         if protein not in inference_proteins:
             print(f"{protein} not in inference. Skipping.")
         else:
-            nodes_list = data[protein]  # FIXME: data[protein] is now a df
+            nodes_list = data[protein]['index'].tolist()  # Convert DataFrame to list of node indexes
             res1 = int(row['Residue_1'])
             res2 = int(row['Residue_2'])
             res3 = int(row['Residue_3'])
