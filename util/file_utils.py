@@ -250,6 +250,58 @@ def generate_SMILES(monomer_df, cycpep_df):
     smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"), index=False)
 
 
+def split_monomer_string(monomer_string, monomer_map):
+    monomer_list = list(monomer_map.keys())
+    monomer_list.sort(key=len, reverse=True)
+    print(monomer_list)
+
+    result = []
+    while monomer_string:
+        found = False
+        for monomer in monomer_list:
+            if monomer_string.startswith(monomer):
+                result.append(monomer)
+                monomer_string = monomer_string[len(monomer):]
+                found = True
+                break
+        if not found:
+            result.append(monomer_string[0])
+            monomer_string = monomer_string[1:]
+
+    print(monomer_string)
+    print(result)
+
+    return result
+
+
+def generate_SMILES_mutated(monomer_df, cycpep_dict):
+    """
+    Generate file with full SMILES and mock permeability values for each mutated cyclic peptide
+    """
+    smiles_df = pd.DataFrame(columns=['ID', 'SMILES', 'permeability'])
+
+    monomer_map = generate_monomer_map(monomer_df)
+
+    mutations = {}
+    for key, value in cycpep_dict.items():
+        for idx, pp in enumerate(value[0]):
+            mutations[pp] = value[1][idx]
+
+    for key, value in mutations.items():
+        seq = split_monomer_string(key, monomer_map)
+        monomer_list = [Chem.MolFromSmiles(monomer_map[aa]) for aa in seq]
+
+        peptide = cyc.make_peptide(monomer_list)
+        smiles = Chem.MolToSmiles(peptide)
+
+        # TODO: Adjust target generation instead of using mock values
+        smiles_df = smiles_df.append({'ID': key, 'SMILES': smiles, 'permeability': -10 if value == 1 else 0},
+                                     ignore_index=True)
+
+    create_folder(cyclic_concat_dir)
+    smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"), index=False)
+
+
 def generate_cyclic_targets(peptide_df, output_file_name):
     """
     Generate files with binary target values for each protein entry ID

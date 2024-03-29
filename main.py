@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 import tensorflow as tf
 import pandas as pd
@@ -10,6 +8,7 @@ from model.train import train_model
 from model.model import in_out_tensors
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
 from datetime import datetime
+import pickle
 
 import os
 import configparser
@@ -38,8 +37,10 @@ inference_dir = config['inference_dir']
 model_dir = config['model_dir']
 categories_dir = config['categories_dir']
 visualization_dir = config['visualization_dir']
+use_mutations = config['use_mutations']
 
 cyclic_csv_dir = config['cyclic_csv_dir']
+cyclic_mutations_file = config['cyclic_mutations_file']
 cyclic_concat_dir = config['cyclic_concat_dir']
 cyclic_targets_dir = config['cyclic_targets_dir']
 cyclic_graph_dir = config['cyclic_graph_dir']
@@ -54,10 +55,15 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 def check_and_generate_targets():
     if graph_type == "molecule":
         monomers = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Monomer_All.csv"))
-        peptide_data = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Peptide_Shape_Circle.csv"))
 
         if not os.listdir(cyclic_concat_dir):
-            fu.generate_SMILES(monomers, peptide_data)
+            if use_mutations.lower() == 'y':
+                with open(cyclic_mutations_file, 'rb') as f:
+                    peptide_data = pickle.load(f)
+                    fu.generate_SMILES_mutated(monomers, peptide_data)
+            else:
+                peptide_data = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Peptide_Shape_Circle.csv"))
+                fu.generate_SMILES(monomers, peptide_data)
             logging.info("Generated cyclic peptide SMILES")
 
         if not os.listdir(cyclic_targets_dir):
