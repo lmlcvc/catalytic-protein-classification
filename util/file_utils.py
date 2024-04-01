@@ -253,7 +253,6 @@ def generate_SMILES(monomer_df, cycpep_df):
 def split_monomer_string(monomer_string, monomer_map):
     monomer_list = list(monomer_map.keys())
     monomer_list.sort(key=len, reverse=True)
-    print(monomer_list)
 
     result = []
     while monomer_string:
@@ -268,9 +267,6 @@ def split_monomer_string(monomer_string, monomer_map):
             result.append(monomer_string[0])
             monomer_string = monomer_string[1:]
 
-    print(monomer_string)
-    print(result)
-
     return result
 
 
@@ -278,7 +274,7 @@ def generate_SMILES_mutated(monomer_df, cycpep_dict):
     """
     Generate file with full SMILES and mock permeability values for each mutated cyclic peptide
     """
-    smiles_df = pd.DataFrame(columns=['ID', 'SMILES', 'permeability'])
+    smiles_df = pd.DataFrame(columns=['ID', 'SMILES', 'permeability']).set_index('ID')
 
     monomer_map = generate_monomer_map(monomer_df)
 
@@ -295,8 +291,10 @@ def generate_SMILES_mutated(monomer_df, cycpep_dict):
         smiles = Chem.MolToSmiles(peptide)
 
         # TODO: Adjust target generation instead of using mock values
-        smiles_df = smiles_df.append({'ID': key, 'SMILES': smiles, 'permeability': -10 if value == 1 else 0},
+        smiles_df = smiles_df.append(pd.Series({'SMILES': smiles, 'permeability': -10 if value == 1 else 0}),
                                      ignore_index=True)
+
+    smiles_df.index.name = 'ID'
 
     create_folder(cyclic_concat_dir)
     smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"), index=False)

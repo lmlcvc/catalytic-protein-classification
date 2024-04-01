@@ -39,6 +39,7 @@ cyclic_inference_dir = config['cyclic_inference_dir']
 categories_dir = config['categories_dir']
 file_list_dir = config['file_list_dir']
 use_distance_as_weight = config['use_distance_as_weight']
+use_mutations = config['use_mutations']
 
 # graphein config
 graphein_config = None
@@ -231,8 +232,12 @@ def generate_molecule_graph(cycpept, output_directory):
     nodes = prepare_nodes_molecular(nodes)
     edges = prepare_edges_molecular(edges)
 
-    nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_nodes.csv"))
-    edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_edges.csv"))
+    if use_mutations.lower() == 'y':
+        nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_nodes.csv"))
+        edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_edges.csv"))
+    else:
+        nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:09d}_nodes.csv"))
+        edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:09d}_edges.csv"))
 
 
 def standardise_category(category):
