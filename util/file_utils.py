@@ -297,7 +297,7 @@ def generate_SMILES_mutated(monomer_df, cycpep_dict):
     smiles_df.index.name = 'ID'
 
     create_folder(cyclic_concat_dir)
-    smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"), index=False)
+    smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"))
 
 
 def generate_cyclic_targets(peptide_df, output_file_name):
