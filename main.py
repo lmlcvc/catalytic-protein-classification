@@ -87,7 +87,7 @@ def generate_graphs_and_categories():
     if graph_type == "molecule":
         if not os.listdir(cyclic_graph_dir):
             fu.create_folder(cyclic_graph_dir)
-            cyclic_peptides = pd.read_csv(os.path.join(cyclic_targets_dir, "ground_truth.csv"))
+            cyclic_peptides = pd.read_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"))
 
             for _, row in cyclic_peptides.iterrows():
                 gu.generate_molecule_graph(row, cyclic_graph_dir)
@@ -118,7 +118,7 @@ def generate_graphs_and_categories():
 
 def load_graphs_and_labels():
     if graph_type == "molecule":
-        return gu.load_cyclic_graphs(cyclic_graph_dir), gu.load_cyclic_graph_labels()
+        return gu.load_cyclic_graphs(cyclic_graph_dir, "ground_truth.csv"), gu.load_cyclic_graph_labels()
     else:
         if demo_run.lower() == "y":
             return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
@@ -127,19 +127,10 @@ def load_graphs_and_labels():
 
 
 def generate_inference_graphs():
-    if graph_type == "molecule":
-        if not os.listdir(cyclic_inference_dir):
-            fu.create_folder(cyclic_inference_dir)
-            cyclic_peptides = pd.read_csv(os.path.join(cyclic_targets_dir, "inference_truth.csv"))
-
-            for _, row in cyclic_peptides.iterrows():
-                gu.generate_molecule_graph(row, cyclic_inference_dir)
-            logging.info("Generated cyclic peptide inference graphs")
-    else:
-        if not os.listdir(inference_dir):
-            [gu.generate_residue_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
-             os.listdir(pdb_inference_dir)]
-            logging.info("Generated inference graphs")
+    if not os.listdir(inference_dir):
+        [gu.generate_residue_graph(pdb_inference_dir, entry.replace(".pdb", ""), inference_dir) for entry in
+         os.listdir(pdb_inference_dir)]
+        logging.info("Generated inference graphs")
 
 
 def load_model():
@@ -210,7 +201,7 @@ if __name__ == "__main__":
         model = perform_model_training()
     else:
         fu.create_folder(categories_dir)
-        if not os.listdir(categories_dir):
+        if not os.listdir(categories_dir) and graph_type != 'molecule':
             gu.generate_categories(demo_graph_dir,
                                    categories_dir) if demo_run.lower() == "y" else gu.generate_categories(
                 graph_dir, categories_dir)
@@ -225,10 +216,7 @@ if __name__ == "__main__":
 
     # Generate and use inference graphs
     if graph_type == "molecule":
-        fu.create_folder(cyclic_inference_dir)
-        if not os.listdir(cyclic_inference_dir):
-            generate_inference_graphs()
-        inference_graphs = gu.load_cyclic_graphs(cyclic_inference_dir)
+        inference_graphs = gu.load_cyclic_graphs(cyclic_graph_dir, "inference_truth.csv")
         inference_labels = gu.load_cyclic_graph_labels("inference_truth.csv")
     else:
         fu.create_folder(inference_dir)

@@ -217,7 +217,7 @@ def generate_residue_graph(source_directory, entry, output_directory):
 
 
 def generate_molecule_graph(cycpept, output_directory):
-    entry = cycpept["index"]
+    entry = cycpept["ID"]
     smiles = cycpept["SMILES"]
 
     try:
@@ -233,11 +233,11 @@ def generate_molecule_graph(cycpept, output_directory):
     edges = prepare_edges_molecular(edges)
 
     if use_mutations.lower() == 'y':
-        nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_nodes.csv"))
-        edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_edges.csv"))
-    else:
         nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:09d}_nodes.csv"))
         edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:09d}_edges.csv"))
+    else:
+        nodes.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_nodes.csv"))
+        edges.to_csv(os.path.join(output_directory, f"CYCPEPT_{entry:04d}_edges.csv"))
 
 
 def standardise_category(category):
@@ -330,17 +330,22 @@ def load_graph_labels(filename="ground_truth.txt"):
         return df
 
 
-def load_cyclic_graphs(source_directory):
+def load_cyclic_graphs(source_directory, targets_file):
     graphs = []
 
     filenames = sorted(os.listdir(source_directory))
     filename_pairs = [filenames[i: i + 2] for i in range(0, len(filenames), 2)]
+
+    targets_df = pd.read_csv(os.path.join(cyclic_targets_dir, targets_file))
 
     for edges, nodes in filename_pairs:
         edges_id = edges.split('_')[1]
         nodes_id = nodes.split('_')[1]
         if nodes_id != edges_id:
             raise f"IDs for (nodes, edges) pair do not match: {nodes}, {edges}"
+
+        if int(nodes_id) not in targets_df["ID"].values:
+            continue
 
         edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)
         nodes_df = pd.read_csv(os.path.join(source_directory, nodes), index_col=0)
