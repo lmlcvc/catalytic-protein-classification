@@ -10,6 +10,7 @@ from biopandas.pdb import PandasPdb
 from graphein.protein.config import ProteinGraphConfig
 from graphein.protein.edges import distance
 from graphein.protein.edges.atomic import add_atomic_edges
+from graphein.protein.features.nodes import amino_acid, dssp, geometry
 from graphein.protein.graphs import construct_graph
 from graphein.protein.visualisation import plotly_protein_structure_graph
 from stellargraph import StellarGraph
@@ -34,6 +35,13 @@ use_distance_as_weight = config['use_distance_as_weight']
 graphein_config = None
 
 if graph_type == "residue":
+    node_metadata_functions = [
+        amino_acid.hydrogen_bond_donor,
+        amino_acid.hydrogen_bond_acceptor,
+        # amino_acid.expasy_protein_scale,
+        amino_acid.meiler_embedding
+    ]
+
     edge_construction_funcs = [
         distance.add_aromatic_interactions,
         distance.add_cation_pi_interactions,
@@ -49,13 +57,14 @@ if graph_type == "residue":
         # intramolecular.van_der_waals
     ]
 
-    graphein_params_to_change = {"edge_construction_functions": edge_construction_funcs}
+    graphein_params_to_change = {"node_metadata_functions": node_metadata_functions,
+                                 "edge_construction_functions": edge_construction_funcs}
     graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 elif graph_type == "atom":
     graphein_params_to_change = {"granularity": "atom", "edge_construction_functions": [add_atomic_edges]}
     graphein_config = ProteinGraphConfig(**graphein_params_to_change)
 
-graphein_config.dict()
+print(graphein_config.dict())
 
 
 def get_distance_matrix(coords):
@@ -92,20 +101,19 @@ def prepare_nodes(nodes):
         nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
         # remove unnecessary columns
-        nodes = nodes.drop(['residue_number', 'chain_id', 'coords', 'meiler'], axis=1)
+        nodes = nodes.drop(['residue_number', 'chain_id', 'coords'], axis=1)
 
         residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET",
                          "PHE",
                          "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
 
-        # --- One-hot ---
+        # --- RESIDUE ---
         # Create new columns for each residue name
         res_names_encoded = pd.DataFrame()
         for residue in residue_names:
             # 1 if that kind was present in edges[kind], otherwise 0
             res_names_encoded[residue] = nodes['residue_name'].apply(
                 lambda x: 1 if residue in x.replace("'", "") else 0)
-        # ---------------
 
         # Check for values in 'residue_name' not present in residue_names
         unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
@@ -113,8 +121,34 @@ def prepare_nodes(nodes):
             unknown_residues_str = ', '.join(unknown_residues)
             print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
 
-        # Apply changes to original df
         nodes = pd.concat([nodes, res_names_encoded], axis=1)
+        # ---------------
+
+        # --- HBOND ---
+        # Take out the hbond donor/acceptor count as int
+        nodes['hbond_donors'] = nodes['hbond_donors'].astype(int)
+        nodes['hbond_acceptors'] = nodes['hbond_acceptors'].astype(int)
+        # ---------------
+
+        # --- MEILER ---
+        # Extract Meiler dims into separate columns
+        for index, row in nodes.iterrows():
+            for dim_num in range(1, 8):
+                dim_col_name = f'dim_{dim_num}'
+                nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]
+        # ---------------
+
+        # --- SIDECHAIN VECTOR ---
+        # Extract sidechain vector (x, y, z) into separate columns
+        direction_mapping = {0: 'x', 1: 'y', 2: 'z'}
+
+        # Loop through each row and assign sidechain vector values to the corresponding columns
+        for index, row in nodes.iterrows():
+            for direction_idx in range(0, 3):
+                direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
+                nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx]
+
+        # ---------------
 
         # remove or transform data depending on graph type
         if graph_type == "atom":
@@ -124,7 +158,7 @@ def prepare_nodes(nodes):
             nodes.element_symbol = pd.Categorical(nodes.element_symbol)
             nodes['element_symbol'] = nodes.element_symbol.cat.codes
         elif graph_type == "residue":
-            nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name'], axis=1)
+            nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name', 'meiler', 'sidechain_vector'], axis=1)
         else:
             raise f"Unexpected graph type argument: {graph_type}"
 
@@ -141,7 +175,7 @@ def prepare_edges(edges):
         edges['kind'] = edges['kind'].str.translate({ord('{'): None, ord('}'): None, ord("'"): None})
 
         edge_kinds = ["aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic", "ionic",
-                      "protein_bond"]
+                      "protein_bond", "distance_threshold"]
 
         # --- Encoding ---
         # Split the values in the 'kind' column and create new columns for each edge kind
@@ -179,6 +213,10 @@ def generate_graph(source_directory, entry, output_directory):
         graph = construct_graph(config=graphein_config,
                                 path=pdb_path,
                                 pdb_code=entry)
+
+        geometry.add_sidechain_vector(graph)
+        # geometry.add_beta_carbon_vector(graph)
+        # geometry.add_sequence_neighbour_vector(graph)
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
         return
