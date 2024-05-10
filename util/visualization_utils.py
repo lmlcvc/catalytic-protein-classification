@@ -339,6 +339,6 @@ def feature_correlations(log_path, out_dir):
 
     # Visualize the correlation matrix as a heatmap
     plt.figure(figsize=(12, 10))
-    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
+    sns.heatmap(correlation_matrix, annot=False, cmap='coolwarm', fmt=".2f", linewidths=.5)
     plt.title('Feature Correlations')
     plt.savefig(os.path.join(out_dir, 'correlation.png'))

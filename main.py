@@ -3,6 +3,7 @@ import csv
 import logging
 import os
 import random
+import sys
 import warnings
 from datetime import datetime
 
@@ -278,7 +279,12 @@ if __name__ == "__main__":
 
             if os.path.getsize(ranks_log_filepath) == 0:
                 writer.writerow(
-                    ["Residue name", "B-factor", "X coordinate", "Y coordinate", "Z coordinate"])
+                    ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", "ALA", "ARG",
+                     "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE",
+                     "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL", "dim_1", "dim_2",
+                     "dim_3", "dim_4", "dim_5", "dim_6", "dim_7", "sidechain_vector_x", "sidechain_vector_y",
+                     "sidechain_vector_z"
+                     ])
             writer.writerow(list(feature_ranking))
 
         # Save feature importance ranking
@@ -320,9 +326,9 @@ if __name__ == "__main__":
     # au.generate_triad_combinations(relevant_nodes_dict, analysis_run_dir)
 
     # class-aggregated analysis
-    au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
-    au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
-    au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
+    # au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
+    # au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
+    # au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
 
     # Correlation matrix of feature ranking in inference
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)

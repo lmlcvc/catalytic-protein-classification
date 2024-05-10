@@ -21,12 +21,10 @@ targets_dir = config['targets_dir']
 graph_dir = config['graph_dir']
 aas_dir = config['aas_dir']
 
-node_feature_names = ["Residue name",
-                      "Residue number",
-                      "B-factor",
-                      "X coordinate",
-                      "Y coordinate",
-                      "Z coordinate"]
+node_feature_names = ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", "dim_1", "dim_2",
+                      "dim_3", "dim_4", "dim_5", "dim_6", "dim_7", "sidechain_vector_x", "sidechain_vector_y",
+                      "sidechain_vector_z"
+                      ]
 
 
 def calc_mean(data):
