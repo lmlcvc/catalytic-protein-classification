@@ -2,7 +2,7 @@ import tensorflow as tf
 from stellargraph.layer import DeepGraphCNN
 from stellargraph.layer import GCNSupervisedGraphClassification
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.optimizers import Adam
 
@@ -28,14 +28,17 @@ def in_out_tensors(generator, model):
 
 def create_graph_classification_model_gcn(generator):
     gc_model = GCNSupervisedGraphClassification(
-        layer_sizes=[64, 64],
-        activations=["relu", "relu"],
+        layer_sizes=[128, 128, 64, 64],
+        activations=["relu", "relu", "relu", "relu"],
         generator=generator,
         dropout=0.5,
     )
+
     x_inp, x_out = gc_model.in_out_tensors()
-    predictions = Dense(units=32, activation="relu")(x_out)
+    predictions = Dense(units=64, activation="relu")(x_out)
+    predictions = Dense(units=32, activation="relu")(predictions)
     predictions = Dense(units=16, activation="relu")(predictions)
+    predictions = Dropout(0.5)(predictions)  # dropout layer after dense layer
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
     # Create the Keras model and prepare it for training
