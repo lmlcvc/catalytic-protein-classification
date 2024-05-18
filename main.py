@@ -4,7 +4,7 @@ import pandas as pd
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
-from model.train import train_model
+from model.train import train_model_single, train_model
 from model.model import in_out_tensors
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
 from datetime import datetime
@@ -46,6 +46,9 @@ cyclic_targets_dir = config['cyclic_targets_dir']
 cyclic_graph_dir = config['cyclic_graph_dir']
 cyclic_inference_dir = config['cyclic_inference_dir']
 cyclic_inference_split = config['cyclic_inference_split']
+predefined_splits = config['predefined_splits']
+split_dir = config['split_dir']
+number_of_splits = config['number_of_splits']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
 # generation
@@ -61,14 +64,19 @@ def check_and_generate_targets():
                 with open(cyclic_mutations_file, 'rb') as f:
                     peptide_data = pickle.load(f)
                     fu.generate_SMILES_mutated(monomers, peptide_data)
+            elif predefined_splits.lower() == 'y':
+                fu.generate_predefined_list(split_dir)
+                logging.info("Generated cyclic peptide SMILES and targets")
+                return
             else:
                 peptide_data = pd.read_csv(os.path.join(cyclic_csv_dir, "CycPeptMPDB_Peptide_Shape_Circle.csv"))
                 fu.generate_SMILES(monomers, peptide_data)
             logging.info("Generated cyclic peptide SMILES")
 
-        if not os.listdir(cyclic_targets_dir):
+        if not os.listdir(cyclic_targets_dir) and predefined_splits.lower() == 'n':
             cyclic_peptides = pd.read_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"))
-            training_peptides, inference_peptides = fu.training_inference_split(cyclic_peptides, float(cyclic_inference_split))
+            training_peptides, inference_peptides = fu.training_inference_split(cyclic_peptides,
+                                                                                float(cyclic_inference_split))
 
             fu.generate_cyclic_targets(training_peptides, "ground_truth.csv")
             fu.generate_cyclic_targets(inference_peptides, "inference_truth.csv")
@@ -118,7 +126,10 @@ def generate_graphs_and_categories():
 
 def load_graphs_and_labels():
     if graph_type == "molecule":
-        return gu.load_cyclic_graphs(cyclic_graph_dir, "ground_truth.csv"), gu.load_cyclic_graph_labels()
+        if predefined_splits.lower() == "y":
+            return gu.load_all_cyclic_graphs_and_labels(cyclic_graph_dir, "cyclic_peptides.csv")
+        else:
+            return gu.load_cyclic_graphs(cyclic_graph_dir, "ground_truth.csv"), gu.load_cyclic_graph_labels()
     else:
         if demo_run.lower() == "y":
             return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
@@ -133,26 +144,26 @@ def generate_inference_graphs():
         logging.info("Generated inference graphs")
 
 
-def load_model():
+def load_model(source=model_dir):
     if use_dgcnn.lower() == "y":
-        if not os.path.exists(os.path.join(model_dir, "dgcnn_model.h5")):
+        if not os.path.exists(os.path.join(source, "dgcnn_model.h5")):
             return None
 
         with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
-            model = tf.keras.models.load_model(os.path.join(model_dir, "dgcnn_model.h5"))
+            model = tf.keras.models.load_model(os.path.join(source, "dgcnn_model.h5"))
             print(model.summary())
     else:
-        if not os.path.exists(os.path.join(model_dir, "gcn_model.h5")):
+        if not os.path.exists(os.path.join(source, "gcn_model.h5")):
             return None
 
         with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
-            model = tf.keras.models.load_model(os.path.join(model_dir, "gcn_model.h5"))
+            model = tf.keras.models.load_model(os.path.join(source, "gcn_model.h5"))
             print(model.summary())
 
     return model
 
 
-def perform_model_training():
+def perform_model_training_kfold():
     model = None
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
@@ -177,56 +188,56 @@ def perform_model_training():
     return model
 
 
-if __name__ == "__main__":
-    # run setup check
-    fu.check_setup(check_setup)
+def perform_single_model_training(train_index, val_index, destination=model_dir):
+    model = None
+    if use_dgcnn.lower() == "y":
+        if "dgcnn_model.h5" not in os.listdir(destination):
+            # Create and train classification models
+            model, history = train_model_single(graph_generator, graph_labels, train_index, val_index, epochs=200)
+            print(model.summary())
 
-    if one_per_entry.lower() == "y":
-        fu.pick_best()
+            # Save the model
+            model.save(os.path.join(destination, "dgcnn_model.h5"))
+            print("GCN model trained and saved successfully.")
 
-    check_and_generate_targets()
-    # fu.generate_ground_truth(pdb_catalytic_dir)
-
-    graphs = []
-    inference_graphs = []
-
-    # Load or generate graphs
-    if not load_model():
-        # Create graphs for model
-        generate_graphs_and_categories()
-        graphs, graph_labels = load_graphs_and_labels()
-        graph_generator = PaddedGraphGenerator(graphs=graphs)
-
-        # Train model
-        model = perform_model_training()
     else:
-        fu.create_folder(categories_dir)
-        if not os.listdir(categories_dir) and graph_type != 'molecule':
-            gu.generate_categories(demo_graph_dir,
-                                   categories_dir) if demo_run.lower() == "y" else gu.generate_categories(
-                graph_dir, categories_dir)
-            logging.info("Generated graph categories")
+        if "gcn_model.h5" not in os.listdir(destination):
+            # Create and train classification models
+            model, history = train_model_single(graph_generator, graph_labels, train_index, val_index, epochs=200)
+            print(model.summary())
 
-        model = load_model()
+            # Save the model
+            model.save(os.path.join(destination, "gcn_model.h5"))
+            print("GCN model trained and saved successfully.")
 
-        if model is None:
-            raise ValueError("Model cannot be None")
+    return model, history
 
-        # graphs, graph_labels = load_graphs_and_labels()
 
-    # Generate and use inference graphs
-    if graph_type == "molecule":
-        inference_graphs = gu.load_cyclic_graphs(cyclic_graph_dir, "inference_truth.csv")
-        inference_labels = gu.load_cyclic_graph_labels("inference_truth.csv")
+def perform_model_training():
+    if predefined_splits.lower() == 'y':
+        models = []
+        histories = []
+        test_sets = []
+        for i in range(1, int(number_of_splits) + 1):
+            logging.info(f"Training model {i}")
+            if not os.path.isdir(os.path.join(model_dir, f"Split {i}")):
+                os.mkdir(os.path.join(model_dir, f"Split {i}"))
+            train_indices, val_indices, test_indices = fu.get_split_indices("cyclic_peptides.csv",
+                                                                            split_dir, i)
+            model, history = perform_single_model_training(train_indices, val_indices,
+                                                           os.path.join(model_dir, f"Split {i}"))
+            models.append(model)
+            histories.append(history)
+            test_sets.append(test_indices)
+
+        vu.visualize_training(histories)
+        vu.visualize_validation(histories)
+        return models, test_sets
     else:
-        fu.create_folder(inference_dir)
-        if not os.listdir(inference_dir):
-            generate_inference_graphs()
-        fu.generate_ground_truth(pdb_inference_dir)
-        gu.generate_categories(inference_dir, categories_dir)
-        inference_graphs = gu.load_graphs(inference_dir)
-        inference_labels = gu.load_graph_labels("inference_truth.txt")
+        return perform_model_training_kfold()
 
+
+def perform_model_inference(model, inference_graphs, inference_labels):
     # Prepare input graph data for inference
     inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
     inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
@@ -289,3 +300,66 @@ if __name__ == "__main__":
 
     vu.evaluate_model(binary_predictions, inference_labels)
     vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))
+
+
+if __name__ == "__main__":
+    # run setup check
+    fu.check_setup(check_setup)
+
+    if one_per_entry.lower() == "y":
+        fu.pick_best()
+
+    check_and_generate_targets()
+    # fu.generate_ground_truth(pdb_catalytic_dir)
+
+    # Load or generate graphs
+    if not load_model():
+        # Create graphs for model
+        generate_graphs_and_categories()
+        graphs, graph_labels = load_graphs_and_labels()
+        graph_generator = PaddedGraphGenerator(graphs=graphs)
+
+        # Train model
+        model = perform_model_training()
+    else:
+        fu.create_folder(categories_dir)
+        if not os.listdir(categories_dir) and graph_type != 'molecule':
+            gu.generate_categories(demo_graph_dir,
+                                   categories_dir) if demo_run.lower() == "y" else gu.generate_categories(
+                graph_dir, categories_dir)
+            logging.info("Generated graph categories")
+
+        model = load_model()
+
+        if model is None:
+            raise ValueError("Model cannot be None")
+
+        # graphs, graph_labels = load_graphs_and_labels()
+
+    if predefined_splits.lower() == 'y':
+        for split in range(1, int(number_of_splits) + 1):
+            if not os.path.isdir(os.path.join(model_dir, f"Split {split}")):
+                logging.warning(f"No model for split {split}")
+                continue
+
+            model = load_model(os.path.join(model_dir, f"Split {split}"))
+            logging.info(f"Loaded model {split}")
+            graphs, labels = gu.load_test_cyclic_graphs_and_labels(cyclic_graph_dir,
+                                                                   "cyclic_peptides.csv",
+                                                                   split_dir, split)
+
+            perform_model_inference(model, graphs, labels)
+    else:
+        # Generate and use inference graphs
+        if graph_type == "molecule":
+            graphs = gu.load_cyclic_graphs(cyclic_graph_dir, "inference_truth.csv")
+            labels = gu.load_cyclic_graph_labels("inference_truth.csv")
+        else:
+            fu.create_folder(inference_dir)
+            if not os.listdir(inference_dir):
+                generate_inference_graphs()
+            fu.generate_ground_truth(pdb_inference_dir)
+            gu.generate_categories(inference_dir, categories_dir)
+            graphs = gu.load_graphs(inference_dir)
+            labels = gu.load_graph_labels("inference_truth.txt")
+            perform_model_inference(model, graphs, labels)

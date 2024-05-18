@@ -1,3 +1,4 @@
+import logging
 import os
 import ast
 import configparser
@@ -22,6 +23,7 @@ pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 
 cyclic_concat_dir = config['cyclic_concat_dir']
 cyclic_targets_dir = config['cyclic_targets_dir']
+number_of_splits = config['number_of_splits']
 
 
 def create_folder(output_directory):
@@ -300,6 +302,62 @@ def generate_SMILES_mutated(monomer_df, cycpep_dict):
     smiles_df.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"))
 
 
+def generate_predefined_list(split_dir):
+    """
+    Generate file with full SMILES and mock permeability values for each mutated cyclic peptide
+    """
+    if not os.listdir(split_dir):
+        logging.error("Split directory is empty")
+        return
+
+    files = os.listdir(split_dir)
+    files.sort()
+
+    peptide_dfs = []
+    target_dfs = []
+
+    for filename in files:
+        name = filename.split('.')[0]
+        if name.endswith('1'):
+            df = pd.read_csv(os.path.join(split_dir, filename))
+            if name.startswith('X'):
+                peptide_dfs.append(df)
+            elif name.startswith('y'):
+                target_dfs.append(df)
+
+    peptides = pd.concat(peptide_dfs, ignore_index=True)
+    targets = pd.concat(target_dfs, ignore_index=True)
+    peptides = peptides.join(targets)
+    peptides.sort_values(by=['CycPeptMPDB_ID'], inplace=True)
+
+    selected_columns = peptides[['CycPeptMPDB_ID', 'SMILES', 'target']].copy()
+    selected_columns.columns = ['ID', 'SMILES', 'label']
+
+    create_folder(cyclic_concat_dir)
+    selected_columns.to_csv(os.path.join(cyclic_concat_dir, "cyclic_peptides.csv"), index=False)
+
+
+def get_split_indices(smiles_file, split_dir, split_num):
+    """
+    Return training, validation and set indices for a predefined split
+    """
+    if not os.listdir(split_dir):
+        logging.error("Split directory is empty")
+        return
+
+    smiles_df = pd.read_csv(os.path.join(cyclic_concat_dir, smiles_file))
+
+    train_df = pd.read_csv(os.path.join(split_dir, f"X_train{split_num}.csv"))
+    val_df = pd.read_csv(os.path.join(split_dir, f"X_val{split_num}.csv"))
+    test_df = pd.read_csv(os.path.join(split_dir, f"X_test{split_num}.csv"))
+
+    train_indices = smiles_df.index[smiles_df["ID"].isin(train_df["CycPeptMPDB_ID"])].tolist()
+    val_indices = smiles_df.index[smiles_df["ID"].isin(val_df["CycPeptMPDB_ID"])].tolist()
+    test_indices = smiles_df.index[smiles_df["ID"].isin(test_df["CycPeptMPDB_ID"])].tolist()
+
+    return train_indices, val_indices, test_indices
+
+
 def generate_cyclic_targets(peptide_df, output_file_name):
     """
     Generate files with binary target values for each protein entry ID
@@ -311,7 +369,7 @@ def generate_cyclic_targets(peptide_df, output_file_name):
     for _, row in peptide_df.iterrows():
         targets_df = targets_df.append({'ID': f"{row.ID:04d}",
                                         'SMILES': row.SMILES,
-                                        'label': 1 if row.permeability < -6 else 0},    # TODO: Staviti u konfiguraciju
+                                        'label': 1 if row.permeability < -6 else 0},  # TODO: Staviti u konfiguraciju
                                        ignore_index=True)
 
     create_folder(cyclic_targets_dir)
@@ -321,7 +379,7 @@ def generate_cyclic_targets(peptide_df, output_file_name):
 def training_inference_split(peptide_df, inference_percentage):
     df_copy = peptide_df.copy()
     df_copy['class'] = df_copy['permeability'].apply(lambda x: 1 if x < -6 else 0)
-    classes =df_copy.pop('class')
+    classes = df_copy.pop('class')
 
     inference_rows = int(len(peptide_df) * inference_percentage)
 
@@ -332,4 +390,3 @@ def training_inference_split(peptide_df, inference_percentage):
     training_df = training_df.sort_values(by='ID')
 
     return training_df, inference_df
-

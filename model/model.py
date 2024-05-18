@@ -46,7 +46,7 @@ def create_graph_classification_model_gcn(generator):
     return model
 
 
-def create_graph_classification_model_dcgnn(generator):
+def create_graph_classification_model_dgcnn(generator):
     k = 35  # the number of rows for the output tensor
     layer_sizes = [32, 32, 32, 1]
 
@@ -73,7 +73,7 @@ def create_graph_classification_model_dcgnn(generator):
 
     # Create the Keras model and prepare it for training
     model = tf.keras.Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
                   loss=tf.keras.losses.binary_crossentropy,
                   metrics=["acc"])
 

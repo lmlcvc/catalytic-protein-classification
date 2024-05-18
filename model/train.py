@@ -8,7 +8,7 @@ from sklearn import model_selection
 
 import util.visualization_utils as vu
 
-from model.model import create_graph_classification_model_gcn, create_graph_classification_model_dcgnn
+from model.model import create_graph_classification_model_gcn, create_graph_classification_model_dgcnn
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -63,7 +63,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
         )
 
         if use_dgcnn.lower() == "y":
-            model = create_graph_classification_model_dcgnn(graph_generator)
+            model = create_graph_classification_model_dgcnn(graph_generator)
         else:
             model = create_graph_classification_model_gcn(graph_generator)
 
@@ -92,3 +92,21 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
     plt.show()
 
     return best_model
+
+
+def train_model_single(graph_generator, graph_labels, train_index, val_index, epochs=200):
+    train_gen, test_gen = get_generators(
+        graph_generator, train_index, val_index, graph_labels, batch_size=8
+    )
+
+    if use_dgcnn.lower() == "y":
+        model = create_graph_classification_model_dgcnn(graph_generator)
+    else:
+        model = create_graph_classification_model_gcn(graph_generator)
+
+    history, acc = train_fold(model, train_gen, test_gen, es, epochs)
+
+    print(f"Train set size: {len(train_index)} graphs")
+    print(f"Test set size: {len(val_index)} graphs")
+
+    return model, history
