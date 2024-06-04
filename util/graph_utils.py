@@ -1,6 +1,5 @@
 import configparser
 import logging
-import math
 import os.path
 
 import matplotlib.pyplot as plt
@@ -40,7 +39,7 @@ if graph_type == "residue":
         amino_acid.hydrogen_bond_donor,
         amino_acid.hydrogen_bond_acceptor,
         # amino_acid.expasy_protein_scale,
-        # amino_acid.meiler_embedding
+        amino_acid.meiler_embedding
     ]
 
     edge_construction_funcs = [
@@ -133,10 +132,10 @@ def prepare_nodes(nodes):
 
         # --- MEILER ---
         # Extract Meiler dims into separate columns
-        """for index, row in nodes.iterrows():
+        for index, row in nodes.iterrows():
             for dim_num in range(1, 8):
                 dim_col_name = f'dim_{dim_num}'
-                nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]"""
+                nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]
         # ---------------
 
         # --- SIDECHAIN VECTOR ---
@@ -152,7 +151,6 @@ def prepare_nodes(nodes):
         # ---------------
 
         # remove or transform data depending on graph type
-        # XXX: add meiler to drop if used
         if graph_type == "atom":
             nodes.atom_type = pd.Categorical(nodes.atom_type)
             nodes['atom_type'] = nodes.atom_type.cat.codes
@@ -160,7 +158,7 @@ def prepare_nodes(nodes):
             nodes.element_symbol = pd.Categorical(nodes.element_symbol)
             nodes['element_symbol'] = nodes.element_symbol.cat.codes
         elif graph_type == "residue":
-            nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name', 'sidechain_vector'], axis=1)
+            nodes = nodes.drop(['atom_type', 'element_symbol', 'residue_name', 'meiler', 'sidechain_vector'], axis=1)
         else:
             raise f"Unexpected graph type argument: {graph_type}"
 
