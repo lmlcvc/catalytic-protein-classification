@@ -149,18 +149,18 @@ def prepare_nodes(nodes):
                 nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
         # ---------------
 
-        # --- BETA-CARBON VECTOR ---
-        for index, row in nodes.iterrows():
-            for direction_idx in range(0, 3):
-                direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
-                nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
-        # ---------------
-
-        # --- SEQUENCE NEIGHBOUR VECTOR ---
+        # # --- BETA-CARBON VECTOR ---
         # for index, row in nodes.iterrows():
         #     for direction_idx in range(0, 3):
-        #         direction_col_name = f'seqneigh_n_to_c_{direction_mapping[direction_idx]}'
-        #         nodes.loc[index, direction_col_name] = row['sequence_neighbour_vector_n_to_c'][direction_idx].round(2)
+        #         direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
+        #         nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
+        # # ---------------
+
+        # --- SEQUENCE NEIGHBOUR VECTOR ---
+        for index, row in nodes.iterrows():
+            for direction_idx in range(0, 3):
+                direction_col_name = f'seqneigh_n_to_c_{direction_mapping[direction_idx]}'
+                nodes.loc[index, direction_col_name] = row['sequence_neighbour_vector_n_to_c'][direction_idx].round(2)
         # ---------------
 
         # remove or transform data depending on graph type
@@ -230,8 +230,8 @@ def generate_graph(source_directory, entry, output_directory):
                                 pdb_code=entry)
 
         geometry.add_sidechain_vector(graph)
-        geometry.add_beta_carbon_vector(graph)
-        # geometry.add_sequence_neighbour_vector(graph)
+        # geometry.add_beta_carbon_vector(graph)
+        geometry.add_sequence_neighbour_vector(graph)
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
         return
