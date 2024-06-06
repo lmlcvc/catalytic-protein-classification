@@ -143,17 +143,17 @@ def prepare_nodes(nodes):
         # Then, loop through each row and assign vector values to the corresponding columns
 
         # --- SIDECHAIN VECTOR ---
-        for index, row in nodes.iterrows():
-            for direction_idx in range(0, 3):
-                direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
-                nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
+        # for index, row in nodes.iterrows():
+        #     for direction_idx in range(0, 3):
+        #         direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
+        #         nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
         # ---------------
 
         # # --- BETA-CARBON VECTOR ---
-        # for index, row in nodes.iterrows():
-        #     for direction_idx in range(0, 3):
-        #         direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
-        #         nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
+        for index, row in nodes.iterrows():
+            for direction_idx in range(0, 3):
+                direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
+                nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
         # # ---------------
 
         # --- SEQUENCE NEIGHBOUR VECTOR ---
@@ -230,7 +230,7 @@ def generate_graph(source_directory, entry, output_directory):
                                 pdb_code=entry)
 
         geometry.add_sidechain_vector(graph)
-        # geometry.add_beta_carbon_vector(graph)
+        geometry.add_beta_carbon_vector(graph)
         geometry.add_sequence_neighbour_vector(graph)
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
