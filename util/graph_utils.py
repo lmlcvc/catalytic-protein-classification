@@ -143,10 +143,10 @@ def prepare_nodes(nodes):
         # Then, loop through each row and assign vector values to the corresponding columns
 
         # --- SIDECHAIN VECTOR ---
-        # for index, row in nodes.iterrows():
-        #     for direction_idx in range(0, 3):
-        #         direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
-        #         nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
+        for index, row in nodes.iterrows():
+            for direction_idx in range(0, 3):
+                direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
+                nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
         # ---------------
 
         # # --- BETA-CARBON VECTOR ---
@@ -157,10 +157,10 @@ def prepare_nodes(nodes):
         # # ---------------
 
         # --- SEQUENCE NEIGHBOUR VECTOR ---
-        for index, row in nodes.iterrows():
-            for direction_idx in range(0, 3):
-                direction_col_name = f'seqneigh_n_to_c_{direction_mapping[direction_idx]}'
-                nodes.loc[index, direction_col_name] = row['sequence_neighbour_vector_n_to_c'][direction_idx].round(2)
+        # for index, row in nodes.iterrows():
+        #     for direction_idx in range(0, 3):
+        #         direction_col_name = f'seqneigh_n_to_c_{direction_mapping[direction_idx]}'
+        #         nodes.loc[index, direction_col_name] = row['sequence_neighbour_vector_n_to_c'][direction_idx].round(2)
         # ---------------
 
         # remove or transform data depending on graph type
@@ -172,8 +172,11 @@ def prepare_nodes(nodes):
             nodes['element_symbol'] = nodes.element_symbol.cat.codes
         elif graph_type == "residue":
             nodes = nodes.drop(
-                ['atom_type', 'element_symbol', 'residue_name', 'meiler', 'sidechain_vector', 'c_beta_vector',
-                 'sequence_neighbour_vector_n_to_c'], axis=1)
+                [
+                    'atom_type', 'element_symbol', 'residue_name', 'meiler', 'sidechain_vector', 'c_beta_vector'
+                    # 'sequence_neighbour_vector_n_to_c'
+                ],
+                axis=1)
         else:
             raise f"Unexpected graph type argument: {graph_type}"
 
@@ -231,7 +234,7 @@ def generate_graph(source_directory, entry, output_directory):
 
         geometry.add_sidechain_vector(graph)
         geometry.add_beta_carbon_vector(graph)
-        geometry.add_sequence_neighbour_vector(graph)
+        # geometry.add_sequence_neighbour_vector(graph)
     except:
         logging.error(f"PDB file {entry} failed to transform to graph")
         return
