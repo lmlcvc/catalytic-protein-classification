@@ -50,7 +50,7 @@ if graph_type == "residue":
         distance.add_hydrogen_bond_interactions,
         distance.add_hydrophobic_interactions,
         distance.add_ionic_interactions,
-        partial(distance.add_distance_threshold, long_interaction_threshold=2, threshold=5.0)
+        partial(distance.add_distance_threshold, long_interaction_threshold=2.32, threshold=5.99)
         # intramolecular.pi_stacking
         # intramolecular.salt_bridge,
         # intramolecular.t_stacking,
