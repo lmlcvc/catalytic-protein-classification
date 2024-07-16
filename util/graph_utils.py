@@ -374,6 +374,8 @@ def load_all_cyclic_graphs_and_labels(source_directory, smiles_file):
 
     smiles_df = pd.read_csv(os.path.join(cyclic_concat_dir, smiles_file))
     labels = smiles_df[['label']].copy()
+    labels = smiles_df[['ID', 'label']].copy()
+    labels = labels.set_index(labels.columns[0])
     labels["label"] = labels["label"].astype(float)
     # ????? pt. 3
     labels = labels.squeeze()
@@ -407,7 +409,8 @@ def load_test_cyclic_graphs_and_labels(source_directory, smiles_file, split_dir,
 
     smiles_df = pd.read_csv(os.path.join(cyclic_concat_dir, smiles_file))
     smiles_df = smiles_df.loc[smiles_df["ID"].isin(test_df["CycPeptMPDB_ID"])]
-    labels = smiles_df[['label']].copy()
+    labels = smiles_df[['ID', 'label']].copy()
+    labels = labels.set_index(labels.columns[0])
     labels["label"] = labels["label"].astype(float)
     # ????? pt. 3
     labels = labels.squeeze()

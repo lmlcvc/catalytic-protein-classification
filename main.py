@@ -190,6 +190,7 @@ def perform_model_training_kfold():
 
 def perform_single_model_training(train_index, val_index, destination=model_dir):
     model = None
+    history = None
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(destination):
             # Create and train classification models
@@ -262,7 +263,7 @@ def perform_model_inference(model, inference_graphs, inference_labels):
     inputs = [x_t, mask, A_m]
 
     # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
-    features_ranked_total = [[0 for j in range(inference_generator.node_features_size)] for i in
+    features_ranked_total = [[0 for _ in range(inference_generator.node_features_size)] for _ in
                              range(inference_generator.node_features_size)]
 
     for i, graph in enumerate(inference_graphs):
