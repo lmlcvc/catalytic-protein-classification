@@ -142,18 +142,18 @@ def prepare_nodes(nodes):
         direction_mapping = {0: 'x', 1: 'y', 2: 'z'}
         # Then, loop through each row and assign vector values to the corresponding columns
 
-        # --- SIDECHAIN VECTOR ---
-        for index, row in nodes.iterrows():
-            for direction_idx in range(0, 3):
-                direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
-                nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
-        # ---------------
-
+        # # --- SIDECHAIN VECTOR ---
+        # for index, row in nodes.iterrows():
+        #     for direction_idx in range(0, 3):
+        #         direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
+        #         nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
+        # # ---------------
+        #
         # # --- BETA-CARBON VECTOR ---
-        for index, row in nodes.iterrows():
-            for direction_idx in range(0, 3):
-                direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
-                nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
+        # for index, row in nodes.iterrows():
+        #     for direction_idx in range(0, 3):
+        #         direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
+        #         nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
         # # ---------------
 
         # --- SEQUENCE NEIGHBOUR VECTOR ---
