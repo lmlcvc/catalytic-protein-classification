@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
@@ -25,15 +25,15 @@ if graph_type == 'molecule':
                           "Total degree",
                           "Total valence",
                           "Explicit valence",
-                          "Implicit valence",
-                          "Number of explicit H",
-                          "Number of implicit H",
+                          # "Implicit valence",
+                          # "Number of explicit H",
+                          # "Number of implicit H",
                           "Total number of H",
                           "Number of radical electrons",
                           "Formal charge",
                           "Hybridization",
                           "Is Aromatic",
-                          "Is Isotope",
+                          # "Is Isotope",
                           "Is Ring",
                           "Chiral tag",
                           "Is C",
@@ -185,6 +185,22 @@ def visualise_predictions(predictions, truth_labels, output_dir, category_count=
     plt.xticks(catalytic_x)
     plt.legend()
     plt.savefig(os.path.join(output_dir, 'positive_predictions_histogram'), bbox_inches='tight')
+
+
+def visualize_roc(predictions, truth_labels, output_dir):
+    fpr, tpr, thresholds = roc_curve(truth_labels, predictions)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+    plt.savefig(os.path.join(output_dir, "roc_curve.png"))
 
 
 def visualize_training(histories, figsize=(10, 6), dpi=300):

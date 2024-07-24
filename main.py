@@ -256,6 +256,9 @@ def perform_model_inference(model, inference_graphs, inference_labels):
     # Visualise predictions histogram
     vu.visualise_predictions(predictions, inference_labels.to_list(), os.path.join(run_dir, "predictions"))
 
+    # Visualize the ROC curve
+    vu.visualize_roc(predictions, inference_labels, run_dir)
+
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
 
