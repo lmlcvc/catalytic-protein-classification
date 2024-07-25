@@ -369,7 +369,7 @@ def generate_cyclic_targets(peptide_df, output_file_name):
     for _, row in peptide_df.iterrows():
         targets_df = targets_df.append({'ID': f"{row.ID:04d}",
                                         'SMILES': row.SMILES,
-                                        'label': 1 if row.permeability < -6 else 0},  # TODO: Staviti u konfiguraciju
+                                        'label': 1 if row.permeability >= -6. else 0},  # TODO: Staviti u konfiguraciju
                                        ignore_index=True)
 
     create_folder(cyclic_targets_dir)
@@ -378,7 +378,7 @@ def generate_cyclic_targets(peptide_df, output_file_name):
 
 def training_inference_split(peptide_df, inference_percentage):
     df_copy = peptide_df.copy()
-    df_copy['class'] = df_copy['permeability'].apply(lambda x: 1 if x < -6 else 0)
+    df_copy['class'] = df_copy['permeability'].apply(lambda x: 1 if x >= -6. else 0)
     classes = df_copy.pop('class')
 
     inference_rows = int(len(peptide_df) * inference_percentage)
