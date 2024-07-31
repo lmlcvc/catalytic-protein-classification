@@ -366,4 +366,4 @@ if __name__ == "__main__":
             gu.generate_categories(inference_dir, categories_dir)
             graphs = gu.load_graphs(inference_dir)
             labels = gu.load_graph_labels("inference_truth.txt")
-            perform_model_inference(model, graphs, labels)
+        perform_model_inference(model, graphs, labels)
