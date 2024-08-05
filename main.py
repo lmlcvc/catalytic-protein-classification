@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import pandas as pd
+from sklearn.utils import compute_class_weight
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
@@ -49,6 +50,7 @@ cyclic_inference_split = config['cyclic_inference_split']
 predefined_splits = config['predefined_splits']
 split_dir = config['split_dir']
 number_of_splits = config['number_of_splits']
+use_class_weights = config['use_class_weights']
 
 # suppress "FutureWarning: The default value of regex will change from True to False in a future version." for graph
 # generation
@@ -168,7 +170,7 @@ def perform_model_training_kfold():
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(model_dir):
             # Create and train classification models
-            model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(graph_generator, graph_labels, class_weight_dict, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -178,7 +180,7 @@ def perform_model_training_kfold():
     else:
         if "gcn_model.h5" not in os.listdir(model_dir):
             # Create and train classification models
-            model = train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5)
+            model = train_model(graph_generator, graph_labels, class_weight_dict, epochs=200, folds=10, n_repeats=5)
             print(model.summary())
 
             # Save the model
@@ -194,7 +196,8 @@ def perform_single_model_training(train_index, val_index, destination=model_dir)
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(destination):
             # Create and train classification models
-            model, history = train_model_single(graph_generator, graph_labels, train_index, val_index, epochs=200)
+            model, history = train_model_single(graph_generator, graph_labels, class_weight_dict, train_index, val_index,
+                                                epochs=200)
             print(model.summary())
 
             # Save the model
@@ -204,7 +207,8 @@ def perform_single_model_training(train_index, val_index, destination=model_dir)
     else:
         if "gcn_model.h5" not in os.listdir(destination):
             # Create and train classification models
-            model, history = train_model_single(graph_generator, graph_labels, train_index, val_index, epochs=200)
+            model, history = train_model_single(graph_generator, graph_labels, class_weight_dict, train_index, val_index,
+                                                epochs=200)
             print(model.summary())
 
             # Save the model
@@ -322,6 +326,11 @@ if __name__ == "__main__":
         generate_graphs_and_categories()
         graphs, graph_labels = load_graphs_and_labels()
         graph_generator = PaddedGraphGenerator(graphs=graphs)
+        class_weight_dict = None
+        if use_class_weights.lower() == 'y':
+            class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(graph_labels),
+                                                 y=graph_labels)
+            class_weight_dict = dict(enumerate(class_weights))
 
         # Train model
         model = perform_model_training()

@@ -21,11 +21,11 @@ es = EarlyStopping(
 )
 
 
-def train_fold(model, train_gen, test_gen, es, epochs):
+def train_fold(model, train_gen, test_gen, es, epochs, class_weights):
     print(f"train gen: {train_gen}")
     print(f"validation data (test gen):{test_gen}")
     history = model.fit(
-        train_gen, epochs=epochs, validation_data=test_gen, verbose=1, callbacks=[es],
+        train_gen, epochs=epochs, validation_data=test_gen, verbose=1, callbacks=[es], class_weight=class_weights
     )
 
     # calculate performance on the test data and return along with history
@@ -46,7 +46,7 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
     return train_gen, test_gen
 
 
-def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5):
+def train_model(graph_generator, graph_labels, class_weights, epochs=200, folds=10, n_repeats=5):
     test_accs = []
     all_histories = []
     best_model = None
@@ -67,7 +67,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
         else:
             model = create_graph_classification_model_gcn(graph_generator)
 
-        history, acc = train_fold(model, train_gen, test_gen, es, epochs)
+        history, acc = train_fold(model, train_gen, test_gen, es, epochs, class_weights)
         all_histories.append(history)
         test_accs.append(acc)
 
@@ -94,7 +94,7 @@ def train_model(graph_generator, graph_labels, epochs=200, folds=10, n_repeats=5
     return best_model
 
 
-def train_model_single(graph_generator, graph_labels, train_index, val_index, epochs=200):
+def train_model_single(graph_generator, graph_labels, class_weights, train_index, val_index, epochs=200):
     train_gen, test_gen = get_generators(
         graph_generator, train_index, val_index, graph_labels, batch_size=8
     )
@@ -104,7 +104,7 @@ def train_model_single(graph_generator, graph_labels, train_index, val_index, ep
     else:
         model = create_graph_classification_model_gcn(graph_generator)
 
-    history, acc = train_fold(model, train_gen, test_gen, es, epochs)
+    history, acc = train_fold(model, train_gen, test_gen, es, epochs, class_weights)
 
     print(f"Train set size: {len(train_index)} graphs")
     print(f"Test set size: {len(val_index)} graphs")
