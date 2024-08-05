@@ -190,6 +190,8 @@ def visualise_predictions(predictions, truth_labels, output_dir, category_count=
 def visualize_roc(predictions, truth_labels, output_dir):
     fpr, tpr, thresholds = roc_curve(truth_labels, predictions)
     roc_auc = auc(fpr, tpr)
+    print(f"False positive rate: {fpr}")
+    print(f"True positive rate: {tpr}")
 
     plt.figure(figsize=(8, 6))
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
