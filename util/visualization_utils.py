@@ -1,7 +1,8 @@
 import os
 
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc, \
+    confusion_matrix
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
@@ -190,8 +191,6 @@ def visualise_predictions(predictions, truth_labels, output_dir, category_count=
 def visualize_roc(predictions, truth_labels, output_dir):
     fpr, tpr, thresholds = roc_curve(truth_labels, predictions)
     roc_auc = auc(fpr, tpr)
-    print(f"False positive rate: {fpr}")
-    print(f"True positive rate: {tpr}")
 
     plt.figure(figsize=(8, 6))
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
@@ -263,8 +262,12 @@ def evaluate_model(predictions, labels):
     f1 = f1_score(labels, predictions)
     roc_auc = roc_auc_score(labels, predictions)
 
-    metric_names = ["Accuracy", "Precision", "Recall", "F1-score", "ROC AUC"]
-    metric_values = [accuracy, precision, recall, f1, roc_auc]
+    tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
+
+    fpr = fp / (fp + tn)
+
+    metric_names = ["Accuracy", "Precision", "Recall", "False positive rate", "F1-score", "ROC AUC"]
+    metric_values = [accuracy, precision, recall, fpr, f1, roc_auc]
 
     metric_rows = [[name, value] for name, value in zip(metric_names, metric_values)]
 
