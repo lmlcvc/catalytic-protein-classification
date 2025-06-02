@@ -3,8 +3,6 @@ import util.file_utils as fu
 import configparser
 import os.path
 
-import torch
-import dgl
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd

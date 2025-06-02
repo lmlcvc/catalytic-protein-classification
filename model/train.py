@@ -1,12 +1,15 @@
 import configparser
+import os
 
 import numpy as np
+import pickle
 from matplotlib import pyplot as plt
 
 from keras.callbacks import EarlyStopping
 from sklearn import model_selection
 
 import util.visualization_utils as vu
+import util.file_utils as fu
 
 from model.model import create_graph_classification_model_gcn, create_graph_classification_model_dgcnn
 
@@ -46,6 +49,29 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
     return train_gen, test_gen
 
 
+def generate_fold_indices(graph_labels, split_dir, folds=10, n_repeats=1):
+    """
+    Generate file with fold_num lists of training, validation and test indices
+    """
+
+    fu.create_folder(split_dir)
+
+    stratified_folds = model_selection.RepeatedStratifiedKFold(
+        n_splits=folds, n_repeats=n_repeats
+    ).split(graph_labels, graph_labels)
+
+    all_splits = {}
+    for i, (train_index, val_index) in enumerate(stratified_folds):
+        all_splits[i] = {
+            'train': train_index,
+            'val': val_index
+        }
+
+    with open(os.path.join(split_dir, 'fold_indices.pkl'), 'wb') as f:
+        pickle.dump(all_splits, f)
+    print(f"Saved {len(all_splits)} folds to fold_indices.pkl")
+
+
 def train_model(graph_generator, graph_labels, class_weights, epochs=200, folds=10, n_repeats=5):
     test_accs = []
     all_histories = []
@@ -72,7 +98,7 @@ def train_model(graph_generator, graph_labels, class_weights, epochs=200, folds=
         test_accs.append(acc)
 
         print(f"Train set size: {len(train_index)} graphs")
-        print(f"Test set size: {len(test_index)} graphs")
+        print(f"Validation set size: {len(test_index)} graphs")
 
         if acc > best_acc:
             best_acc = acc
@@ -94,6 +120,16 @@ def train_model(graph_generator, graph_labels, class_weights, epochs=200, folds=
     return best_model
 
 
+def train_fold_single(graph_generator, graph_labels, class_weights, split_dir, fold_num, epochs=200):
+    with open(os.path.join(split_dir, 'fold_indices.pkl'), 'rb') as f:
+        all_splits = pickle.load(f)
+
+    train_index = all_splits[fold_num]['train']
+    val_index = all_splits[fold_num]['val']
+
+    return train_model_single(graph_generator, graph_labels, class_weights, train_index, val_index, epochs)
+
+
 def train_model_single(graph_generator, graph_labels, class_weights, train_index, val_index, epochs=200):
     train_gen, test_gen = get_generators(
         graph_generator, train_index, val_index, graph_labels, batch_size=8
@@ -107,6 +143,6 @@ def train_model_single(graph_generator, graph_labels, class_weights, train_index
     history, acc = train_fold(model, train_gen, test_gen, es, epochs, class_weights)
 
     print(f"Train set size: {len(train_index)} graphs")
-    print(f"Test set size: {len(val_index)} graphs")
+    print(f"Validation set size: {len(val_index)} graphs")
 
     return model, history

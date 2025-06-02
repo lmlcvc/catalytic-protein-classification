@@ -5,7 +5,7 @@ from sklearn.utils import compute_class_weight
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
-from model.train import train_model_single, train_model
+from model.train import train_model_single, train_fold_single, train_model, generate_fold_indices
 from model.model import in_out_tensors
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
 from datetime import datetime
@@ -13,6 +13,7 @@ import pickle
 
 import os
 import configparser
+import argparse
 import logging
 import warnings
 
@@ -238,6 +239,15 @@ def perform_model_training():
         vu.visualize_training(histories)
         vu.visualize_validation(histories)
         return models, test_sets
+    elif args.fold is not None:
+        model, history = train_fold_single(graph_generator, graph_labels, class_weight_dict, split_dir, args.fold)
+        print(model.summary())
+
+        # Save the model
+        model.save(os.path.join(model_dir, f"model_{args.fold}.h5"))
+        print(f"Fold {args.fold} model trained and saved successfully.")
+
+        return model, history
     else:
         return perform_model_training_kfold()
 
@@ -314,12 +324,61 @@ if __name__ == "__main__":
     # run setup check
     fu.check_setup(check_setup)
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-g', '--generate-graphs', help='Generate graphs', action='store_true')
+    parser.add_argument('-k', '--generate-folds', type=int, default=None,
+                        help='Number of folds to generate')
+    parser.add_argument('-t', '--train', help='Train model', action='store_true')
+    parser.add_argument('-i', '--inference', help='Perform inference', action='store_true')
+    parser.add_argument('-f', '--fold', type=int, default=None,
+                        help='Fold number to process (0-indexed)')
+    parser.add_argument('-a', '--accumulate', help='Accumulate k-fold results', action='store_true')
+    args = parser.parse_args()
+
     if one_per_entry.lower() == "y":
         fu.pick_best()
 
     check_and_generate_targets()
     # fu.generate_ground_truth(pdb_catalytic_dir)
 
+    if args.generate_graphs:
+        generate_graphs_and_categories()
+
+    graphs, graph_labels = load_graphs_and_labels()
+    graph_generator = PaddedGraphGenerator(graphs=graphs)
+    class_weight_dict = None
+    if use_class_weights.lower() == 'y':
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(graph_labels),
+                                             y=graph_labels)
+        class_weight_dict = dict(enumerate(class_weights))
+
+    if args.generate_folds:
+        generate_fold_indices(graph_labels, split_dir, args.generate_folds)
+
+    if args.train:
+        if args.fold is not None:
+            model, history = train_fold_single(graph_generator, graph_labels, class_weight_dict, split_dir, args.fold)
+            print(history)
+            #TODO: collect histories
+        else:
+            model = perform_model_training()
+
+    if args.inference:
+        # Generate and use inference graphs
+        if graph_type == "molecule":
+            graphs = gu.load_cyclic_graphs(cyclic_graph_dir, "inference_truth.csv")
+            labels = gu.load_cyclic_graph_labels("inference_truth.csv")
+        else:
+            fu.create_folder(inference_dir)
+            if not os.listdir(inference_dir):
+                generate_inference_graphs()
+            fu.generate_ground_truth(pdb_inference_dir)
+            gu.generate_categories(inference_dir, categories_dir)
+            graphs = gu.load_graphs(inference_dir)
+            labels = gu.load_graph_labels("inference_truth.txt")
+        perform_model_inference(model, graphs, labels)
+
+"""
     # Load or generate graphs
     if not load_model():
         # Create graphs for model
@@ -376,3 +435,4 @@ if __name__ == "__main__":
             graphs = gu.load_graphs(inference_dir)
             labels = gu.load_graph_labels("inference_truth.txt")
         perform_model_inference(model, graphs, labels)
+"""
