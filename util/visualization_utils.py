@@ -1,13 +1,14 @@
+import configparser
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
+import tensorflow as tf
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc, \
     confusion_matrix
-import matplotlib.pyplot as plt
 from tabulate import tabulate
-
-import tensorflow as tf
-import configparser
 
 import util.file_utils as fu
 
@@ -17,7 +18,6 @@ config = config['default']
 
 model_dir = config['model_dir']
 graph_type = config['graph_type']
-
 
 if graph_type == 'molecule':
     node_feature_names = ["Atomic Number",
@@ -47,7 +47,7 @@ if graph_type == 'molecule':
                           "Is Cl",
                           "Is Br",
                           "Is I",
-                          "Is B",]
+                          "Is B", ]
 else:
     node_feature_names = ["Residue name",
                           "Residue number",
@@ -273,6 +273,88 @@ def evaluate_model(predictions, labels):
 
     table = tabulate(metric_rows, headers=["Metric", "Value"], tablefmt="grid")
     print(table)
+    return metric_values
+
+
+def visualize_multiple_models(metrics, figsize=(10, 6), dpi=300):
+    metric_names = ["Accuracy", "Precision", "Recall", "False positive rate", "F1-score", "ROC AUC"]
+    # Boxplot
+    plt.figure(figsize=figsize, dpi=dpi)
+    melted_df = metrics.reset_index().melt(id_vars='index',
+                                           var_name='Metric',
+                                           value_name='Score')
+    ax = sns.boxplot(
+        x="Metric",
+        y="Score",
+        data=melted_df,
+        palette="viridis",
+        linewidth=1.5,
+        flierprops={'marker': 'o', 'markersize': 5, 'markerfacecolor': 'red'}
+    )
+
+    plt.title("Cross-Validation Metrics Distribution Across Folds", fontsize=14)
+    plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, 1.05)  # Adjust if metrics exceed 1.0
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Add median values as text
+    medians = melted_df.groupby("Metric")['Score'].median().round(3)
+    for i, metric in enumerate(metric_names):
+        ax.text(i, medians[metric] + 0.02, f'Med: {medians[metric]}',
+                ha='center', color='black', fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(model_dir, 'box_plot.png'))
+    plt.close()
+
+    # Radar chart
+    categories = metrics.columns.tolist()
+    num_vars = len(categories)
+
+    # Calculate angles for radar chart
+    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+    angles += angles[:1]  # Close the circle
+
+    # Plot setup
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    ax = fig.add_subplot(111, polar=True)
+
+    # Plot each row
+    for idx, row in metrics.iterrows():
+        values = row.values.flatten().tolist()
+        values += values[:1]  # Close the line
+        ax.plot(angles, values, linewidth=1, label=row.name)
+        ax.fill(angles, values, alpha=0.1)
+
+    # Formatting
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1)
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories)
+    ax.set_rlabel_position(0)
+    ax.tick_params(axis='both', which='major', pad=10)
+
+    handles, labels = ax.get_legend_handles_labels()
+    new_labels = [f"Fold {i + 1}" for i in range(len(labels))]
+    plt.legend(handles=handles, labels=new_labels, loc='upper right', bbox_to_anchor=(1.3, 1.1))
+    plt.title("Metric Comparison Radar Chart", y=1.1)
+    plt.savefig(os.path.join(model_dir, 'radar_chart.png'))
+    plt.close()
+
+    # Bar graph
+    plt.figure(figsize=figsize, dpi=dpi)
+    sns.barplot(x='Metric', y='Score', hue='index', data=melted_df, palette='viridis')
+
+    # Formatting
+    plt.title("Metric Comparison - Grouped Bar Chart")
+    plt.ylabel("Score")
+    plt.ylim(0, 1)
+    plt.legend(handles=handles, labels=new_labels, title='Models', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(model_dir, 'bar_chart.png'))
+    plt.close()
 
 
 def save_feature_rankings(feature_rankings, filename):

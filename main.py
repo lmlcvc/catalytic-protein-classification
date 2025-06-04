@@ -147,23 +147,31 @@ def generate_inference_graphs():
         logging.info("Generated inference graphs")
 
 
-def load_model(source=model_dir):
-    if use_dgcnn.lower() == "y":
-        if not os.path.exists(os.path.join(source, "dgcnn_model.h5")):
-            return None
+def load_model(source=model_dir, fold=None):
+    if fold is None:
+        if use_dgcnn.lower() == "y":
+            if not os.path.exists(os.path.join(source, "dgcnn_model.h5")):
+                return None
 
-        with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
-            model = tf.keras.models.load_model(os.path.join(source, "dgcnn_model.h5"))
-            print(model.summary())
+            with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
+                model = tf.keras.models.load_model(os.path.join(source, "dgcnn_model.h5"))
+                print(model.summary())
+        else:
+            if not os.path.exists(os.path.join(source, "gcn_model.h5")):
+                return None
+
+            with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
+                model = tf.keras.models.load_model(os.path.join(source, "gcn_model.h5"))
+                print(model.summary())
+
+        return model
     else:
-        if not os.path.exists(os.path.join(source, "gcn_model.h5")):
+        if not os.path.exists(os.path.join(source, f"model_{fold}.h5")):
             return None
-
-        with tf.keras.utils.custom_object_scope({'GraphConvolution': GraphConvolution}):
-            model = tf.keras.models.load_model(os.path.join(source, "gcn_model.h5"))
+        else:
+            model = tf.keras.models.load_model(os.path.join(source, f"model_{fold}.h5"))
             print(model.summary())
-
-    return model
+            return model
 
 
 def perform_model_training_kfold():
@@ -197,7 +205,8 @@ def perform_single_model_training(train_index, val_index, destination=model_dir)
     if use_dgcnn.lower() == "y":
         if "dgcnn_model.h5" not in os.listdir(destination):
             # Create and train classification models
-            model, history = train_model_single(graph_generator, graph_labels, class_weight_dict, train_index, val_index,
+            model, history = train_model_single(graph_generator, graph_labels, class_weight_dict, train_index,
+                                                val_index,
                                                 epochs=200)
             print(model.summary())
 
@@ -208,7 +217,8 @@ def perform_single_model_training(train_index, val_index, destination=model_dir)
     else:
         if "gcn_model.h5" not in os.listdir(destination):
             # Create and train classification models
-            model, history = train_model_single(graph_generator, graph_labels, class_weight_dict, train_index, val_index,
+            model, history = train_model_single(graph_generator, graph_labels, class_weight_dict, train_index,
+                                                val_index,
                                                 epochs=200)
             print(model.summary())
 
@@ -219,7 +229,7 @@ def perform_single_model_training(train_index, val_index, destination=model_dir)
     return model, history
 
 
-def perform_model_training():
+def perform_model_training(graph_generator=None, graph_labels=None, class_weight_dict=None, split_dir=None, folds=None):
     if predefined_splits.lower() == 'y':
         models = []
         histories = []
@@ -240,7 +250,7 @@ def perform_model_training():
         vu.visualize_validation(histories)
         return models, test_sets
     elif args.fold is not None:
-        model, history = train_fold_single(graph_generator, graph_labels, class_weight_dict, split_dir, args.fold)
+        model, history = train_fold_single(graph_generator, graph_labels, class_weight_dict, split_dir, folds)
         print(model.summary())
 
         # Save the model
@@ -252,7 +262,56 @@ def perform_model_training():
         return perform_model_training_kfold()
 
 
-def perform_model_inference(model, inference_graphs, inference_labels):
+def aggregate_results(model_dir):
+    # Verify directory exists
+    if not os.path.exists(model_dir):
+        raise FileNotFoundError(f"Model directory '{model_dir}' not found")
+
+    # Find all history files
+    history_files = [
+        os.path.join(model_dir, f)
+        for f in os.listdir(model_dir)
+        if f.startswith("history_") and f.endswith(".pkl")
+    ]
+
+    history_files.sort()
+
+    if not history_files:
+        raise ValueError(f"No history files found in {model_dir}")
+
+    val_accuracies = []
+    histories = []
+    for hist_file in history_files:
+        with open(hist_file, "rb") as f:
+            class Placeholder:
+                def __init__(self, history):
+                    self.history = history
+
+            history = pickle.load(f)
+            histories.append(Placeholder(history))
+
+            if 'val_acc' not in history:
+                available_metrics = ", ".join(history.keys())
+                raise KeyError(f"Metric '{'val_acc'}' not found. Available metrics: {available_metrics}")
+
+            best_acc = max(history['val_acc'])
+            val_accuracies.append(best_acc)
+
+    # Calculate statistics
+    mean_acc = np.mean(val_accuracies)
+    std_acc = np.std(val_accuracies)
+
+    print(f"Analyzed {len(val_accuracies)} folds")
+    print(f"Mean validation accuracy: {mean_acc:.4f} ± {std_acc:.4f}")
+
+    vu.visualize_training(histories)
+    vu.visualize_validation(histories)
+
+    return mean_acc, std_acc
+
+
+def perform_model_inference(model, inference_graphs, inference_labels, suppress_printing=False, suppress_ranking=False,
+                            suppress_images=False):
     # Prepare input graph data for inference
     inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
     inference_tensors = inference_generator.flow(inference_graphs, weighted=True, targets=inference_labels)
@@ -285,8 +344,9 @@ def perform_model_inference(model, inference_graphs, inference_labels):
 
     for i, graph in enumerate(inference_graphs):
         prediction = binary_predictions[i][0]
-        print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
-              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels.iloc[i])}")
+        if not suppress_printing:
+            print(f"Graph {i + 1} - {inference_labels.index[i]}:\n"
+                  f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(inference_labels.iloc[i])}")
 
         # Get the input features for the sample
         inputs = inference_tensors[i][0]
@@ -310,14 +370,48 @@ def perform_model_inference(model, inference_graphs, inference_labels):
         # Print feature importance ranking
         for rank, feature_index in enumerate(feature_ranking):
             features_ranked_total[feature_index][rank] += 1
-            print(f"Rank {rank + 1}: Feature {feature_index}")
+            if not suppress_ranking:
+                print(f"Rank {rank + 1}: Feature {feature_index}")
 
-        # Visualize the saliency maps and save them as images
-        vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-        vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
+        if not suppress_images:
+            # Visualize the saliency maps and save them as images
+            vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
+            vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
-    vu.evaluate_model(binary_predictions, inference_labels)
+    metrics = vu.evaluate_model(binary_predictions, inference_labels)
+    with open(os.path.join(run_dir, f"metrics_{run_timestamp}.pkl"), 'wb') as f:
+        pickle.dump(metrics, f)
     vu.save_feature_rankings(features_ranked_total, os.path.join(run_dir, "feature_rankings.txt"))
+    return metrics
+
+
+def aggregate_inference(model_dir, inference_graphs, inference_labels, quick=False):
+    metric_names = ["Accuracy", "Precision", "Recall", "False positive rate", "F1-score", "ROC AUC"]
+    # Verify directory exists
+    if not os.path.exists(model_dir):
+        raise FileNotFoundError(f"Model directory '{model_dir}' not found")
+
+    # Find all history files
+    models = [
+        os.path.join(model_dir, f)
+        for f in os.listdir(model_dir)
+        if f.startswith("model_") and f.endswith(".h5")
+    ]
+
+    models.sort()
+
+    if not models:
+        raise ValueError(f"No history files found in {model_dir}")
+
+    all_metrics = []
+    for model_file in models:
+        with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
+            model = tf.keras.models.load_model(model_file)
+        metrics = perform_model_inference(model, inference_graphs, inference_labels, quick, quick, quick)
+        all_metrics.append(metrics)
+
+    metrics_df = pd.DataFrame(all_metrics, columns=metric_names)
+    vu.visualize_multiple_models(metrics_df)
 
 
 if __name__ == "__main__":
@@ -332,7 +426,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--inference', help='Perform inference', action='store_true')
     parser.add_argument('-f', '--fold', type=int, default=None,
                         help='Fold number to process (0-indexed)')
-    parser.add_argument('-a', '--accumulate', help='Accumulate k-fold results', action='store_true')
+    parser.add_argument('-a', '--aggregate', help='Aggregate k-fold results', action='store_true')
     args = parser.parse_args()
 
     if one_per_entry.lower() == "y":
@@ -358,10 +452,18 @@ if __name__ == "__main__":
     if args.train:
         if args.fold is not None:
             model, history = train_fold_single(graph_generator, graph_labels, class_weight_dict, split_dir, args.fold)
-            print(history)
-            #TODO: collect histories
+            print(model.summary())
+
+            # Save the model
+            model.save(os.path.join(model_dir, f"model_{args.fold}.h5"))
+            with open(os.path.join(model_dir, f"history_{args.fold}.pkl"), 'wb') as f:
+                pickle.dump(history.history, f)
+            print(f"Fold {args.fold} model trained and saved successfully.")
         else:
             model = perform_model_training()
+
+    if args.aggregate:
+        aggregate_results(model_dir)
 
     if args.inference:
         # Generate and use inference graphs
@@ -376,7 +478,12 @@ if __name__ == "__main__":
             gu.generate_categories(inference_dir, categories_dir)
             graphs = gu.load_graphs(inference_dir)
             labels = gu.load_graph_labels("inference_truth.txt")
-        perform_model_inference(model, graphs, labels)
+
+        if args.fold == -1:
+            aggregate_inference(model_dir, graphs, labels, quick=True)
+        else:
+            model = load_model(fold=args.fold)
+            perform_model_inference(model, graphs, labels)
 
 """
     # Load or generate graphs

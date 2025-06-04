@@ -144,5 +144,6 @@ def train_model_single(graph_generator, graph_labels, class_weights, train_index
 
     print(f"Train set size: {len(train_index)} graphs")
     print(f"Validation set size: {len(val_index)} graphs")
+    print(f"Accuracy on validation set: {acc}%")
 
     return model, history
