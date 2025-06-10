@@ -4,11 +4,14 @@ import configparser
 import pandas as pd
 import warnings
 
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import PCA
+
 from biopandas.pdb import PandasPdb
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
+cfgparser = configparser.ConfigParser()
+cfgparser.read('config.ini')
+config = cfgparser['default']
 
 demo_run = config['demo_run']
 
@@ -309,3 +312,29 @@ def generate_aa_frequencies():
 
     if "aa_freqs_init.json" not in os.listdir(aas_dir):
         generate_aa_json()
+
+def generate_aa_to_pca():
+    aa_pca_path = config['aa_pca_features_table']
+    aa_features_df = pd.read_csv(aa_pca_path, index_col=0) 
+
+    # Scale data before PCA
+    scaler = MinMaxScaler()
+    aa_data_rescaled = scaler.fit_transform(aa_features_df.values)
+
+    # Run PCA
+    pca = PCA(n_components = 0.95)
+    pca.fit(aa_data_rescaled)
+    aa_pca = pca.transform(aa_data_rescaled)
+
+    # Create mapping: amino acid code -> PCA vector
+    aa_to_pca = {
+        aa: aa_pca[i].tolist()
+        for i, aa in enumerate(aa_features_df.index)
+    }
+    mapping_path = aa_pca_path.replace('.csv', '_mapping.json')
+    with open(mapping_path, 'w') as f:
+        json.dump(aa_to_pca, f, indent=4)
+    
+    with open("config.ini", 'w') as cfgfile:
+        cfgparser['default']['aa_pca_mapping'] = mapping_path
+        cfgparser.write(cfgfile)

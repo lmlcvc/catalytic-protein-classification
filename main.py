@@ -215,6 +215,9 @@ if __name__ == "__main__":
     os.mkdir(os.path.join(analysis_run_dir, "amino_acids"))
 
     # Load or generate graphs
+    aa_pca_mapping = config.get('aa_pca_mapping', None)
+    if not aa_pca_mapping or not os.path.isfile(aa_pca_mapping) or os.path.getsize(aa_pca_mapping) == 0:
+        fu.generate_aa_to_pca()     # Compute AA-to-PCA mapping if not already present
     generate_graphs()
 
     # Prepare input graph data for training and testing

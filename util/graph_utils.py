@@ -1,4 +1,5 @@
 import configparser
+import json
 import logging
 import os.path
 
@@ -96,6 +97,9 @@ def replace_categories(df, source_dir, df_type):
 
 
 def prepare_nodes(nodes):
+    def get_pca_features(res_name, aa_pca_mapping):
+        return aa_pca_mapping.get(res_name, [0.0] * n_components)  # fallback if unknown
+
     try:
         # split coords into separate columns
         nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
@@ -103,25 +107,33 @@ def prepare_nodes(nodes):
         # remove unnecessary columns
         nodes = nodes.drop(['residue_number', 'chain_id', 'coords'], axis=1)
 
-        residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET",
-                         "PHE",
-                         "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
+        # --- AA PCA ---
+        with open(config['aa_pca_mapping']) as f:
+            aa_pca_mapping = json.load(f)
+        n_components = len(next(iter(aa_pca_mapping.values())))  # number of PCA components
+        pca_features = nodes['residue_name'].apply(lambda res_name: get_pca_features(res_name, aa_pca_mapping))
+        pca_df = pd.DataFrame(pca_features.tolist(), columns=[f'aa_pca_{i+1}' for i in range(n_components)])
+        nodes = pd.concat([nodes.reset_index(drop=True), pca_df], axis=1)
 
         # --- RESIDUE ---
         # Create new columns for each residue name
-        res_names_encoded = pd.DataFrame()
-        for residue in residue_names:
-            # 1 if that kind was present in edges[kind], otherwise 0
-            res_names_encoded[residue] = nodes['residue_name'].apply(
-                lambda x: 1 if residue in x.replace("'", "") else 0)
+        # residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET",
+        #                  "PHE",
+        #                  "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
+        
+        # res_names_encoded = pd.DataFrame()
+        # for residue in residue_names:
+        #     # 1 if that kind was present in edges[kind], otherwise 0
+        #     res_names_encoded[residue] = nodes['residue_name'].apply(
+        #         lambda x: 1 if residue in x.replace("'", "") else 0)
 
-        # Check for values in 'residue_name' not present in residue_names
-        unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
-        if len(unknown_residues) > 0:
-            unknown_residues_str = ', '.join(unknown_residues)
-            print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
+        # # Check for values in 'residue_name' not present in residue_names
+        # unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
+        # if len(unknown_residues) > 0:
+        #     unknown_residues_str = ', '.join(unknown_residues)
+        #     print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
 
-        nodes = pd.concat([nodes, res_names_encoded], axis=1)
+        # nodes = pd.concat([nodes, res_names_encoded], axis=1)
         # ---------------
 
         # --- HBOND ---
