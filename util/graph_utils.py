@@ -253,27 +253,27 @@ def generate_graph(source_directory, entry, output_directory):
         geometry.add_sidechain_vector(graph)
         geometry.add_beta_carbon_vector(graph)
         # geometry.add_sequence_neighbour_vector(graph)
-    except:
-        logging.error(f"PDB file {entry} failed to transform to graph")
-        return
 
-    atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
-    # adjacency_matrix = nx.to_pandas_adjacency(graph)
+        # atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
+        # adjacency_matrix = nx.to_pandas_adjacency(graph)
 
-    nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
-    edges = nx.to_pandas_edgelist(graph)
+        nodes = pd.DataFrame.from_dict(dict(graph.nodes().data()), orient='index')
+        edges = nx.to_pandas_edgelist(graph)
 
-    nodes = prepare_nodes(nodes)
-    if nodes is None:
+        nodes = prepare_nodes(nodes)
+        if nodes is None:
+            raise Exception("Nodes preparation failed")
+
+        edges = prepare_edges(edges)
+        if edges is None:
+            raise Exception("Edges preparation failed")
+
+        nodes.to_csv(os.path.join(output_directory, f"{entry}_nodes.csv"))
+        edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
+        return True
+    except Exception as e:
+        logging.error(f"PDB file {entry} failed to transform to graph: {e}")
         return False
-
-    edges = prepare_edges(edges)
-    if edges is None:
-        return False
-
-    nodes.to_csv(os.path.join(output_directory, f"{entry}_nodes.csv"))
-    edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
-    return True
 
 
 def standardise_category(category):

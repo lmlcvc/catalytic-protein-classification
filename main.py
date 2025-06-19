@@ -90,7 +90,6 @@ def generate_graphs():
                 with open(targets_file_path, "a") as targets_file:
                     targets_file.write(f"{pdb_id}\t1\n")
             else:
-                logging.warning(f"Failed to generate graph for {pdb_id}")
                 failed_graphs.append(pdb_id)
         logging.info("Generated catalytic graphs")
 
@@ -109,7 +108,6 @@ def generate_graphs():
                 with open(targets_file_path, "a") as targets_file:
                     targets_file.write(f"{pdb_id}\t0\n")
             else:
-                logging.warning(f"Failed to generate graph for {pdb_id}")
                 failed_graphs.append(pdb_id)
         logging.info("Generated non-catalytic graphs")
 
