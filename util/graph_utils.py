@@ -349,6 +349,15 @@ def load_graphs(source_directory):
                 graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
         except Exception as e:
             logging.error(f"Failed to load graph from {nodes} and {edges}: {e}")
+
+            # remove from targets if graph loading fails
+            with open(os.path.join(config['targets_dir'], "targets.txt"), "r") as f:
+                targets_lines = f.read().splitlines()
+
+            targets = [line for line in targets_lines if not line.startswith(nodes[0:3].upper())]
+            with open(os.path.join(config['targets_dir'], "targets.txt"), "w") as f:
+                f.write('\n'.join(targets))
+                
             continue
 
     return graphs
