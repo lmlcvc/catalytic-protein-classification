@@ -1,3 +1,4 @@
+import math
 import os
 
 import numpy as np
@@ -151,7 +152,8 @@ def calculate_prediction_counts(predictions, truth_labels, category_count):
     catalytic_false_counts = np.zeros(category_count)
 
     for prediction, truth_label in zip(predictions, truth_labels):
-        category_value = int(prediction * 10) / 10
+        if prediction is None or math.isnan(prediction): continue  # skip NaN predictions
+        category_value = int(prediction+1e-9 * 10) / 10
         if 0 <= prediction < 0.5:
             if np.round(prediction) != truth_label:
                 non_catalytic_false_counts[int(category_value * category_count)] += 1

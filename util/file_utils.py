@@ -22,7 +22,6 @@ file_list_dir = config['file_list_dir']
 pdb_catalytic_dir = config['pdb_catalytic_dir']
 pdb_non_catalytic_dir = config['pdb_non_catalytic_dir']
 pdb_demo_dir = config['pdb_demo_dir']
-pdb_inference_dir = config['pdb_inference_dir']
 
 aas_dir = config['aas_dir']
 
@@ -291,28 +290,6 @@ def generate_aa_json():
         json.dump(amino_acids_freq_data, json_file, indent=4)
 
 
-def generate_aa_frequencies():
-    create_folder(aas_dir)
-    protein_classification = {}
-
-    # FIXME: ensure that targets.txt matches run mode (demo vs real)
-
-    inference_targets = os.path.join(targets_dir, "inference_truth.txt")
-
-    # match protein to true class
-    update_protein_classification(inference_targets, protein_classification)
-
-    # match unique AAs to each protein
-    if "aas_by_protein.json" not in os.listdir(aas_dir):
-        get_aas_by_protein(protein_classification, pdb_inference_dir)
-
-        json_file_path = os.path.join(aas_dir, "aas_by_protein.json")
-        with open(json_file_path, 'w') as json_file:
-            json.dump(protein_classification, json_file, indent=4)
-
-    if "aa_freqs_init.json" not in os.listdir(aas_dir):
-        generate_aa_json()
-
 def generate_aa_to_pca():
     aa_pca_path = config['aa_pca_features_table']
     aa_features_df = pd.read_csv(aa_pca_path, index_col=0) 
@@ -332,6 +309,8 @@ def generate_aa_to_pca():
         for i, aa in enumerate(aa_features_df.index)
     }
     mapping_path = aa_pca_path.replace('.csv', '_mapping.json')
+    aa_to_pca = {aa: vec.tolist() for aa, vec in zip(aa_features_df.index, aa_pca)}
+
     with open(mapping_path, 'w') as f:
         json.dump(aa_to_pca, f, indent=4)
     

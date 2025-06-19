@@ -104,6 +104,11 @@ def prepare_nodes(nodes):
         # split coords into separate columns
         nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
 
+        # Set index to chain_id:residue_name:residue_number
+        nodes = nodes.dropna(subset=['chain_id', 'residue_name', 'residue_number'])
+        nodes['node_id'] = nodes['chain_id'].astype(str) + ':' + nodes['residue_name'].astype(str) + ':' + nodes['residue_number'].astype(str)
+        nodes = nodes.set_index('node_id')
+
         # remove unnecessary columns
         nodes = nodes.drop(['residue_number', 'chain_id', 'coords'], axis=1)
 
@@ -113,7 +118,7 @@ def prepare_nodes(nodes):
         n_components = len(next(iter(aa_pca_mapping.values())))  # number of PCA components
         pca_features = nodes['residue_name'].apply(lambda res_name: get_pca_features(res_name, aa_pca_mapping))
         pca_df = pd.DataFrame(pca_features.tolist(), columns=[f'aa_pca_{i+1}' for i in range(n_components)])
-        nodes = pd.concat([nodes.reset_index(drop=True), pca_df], axis=1)
+        nodes = pd.concat([nodes, pca_df], axis=1)
 
         # --- RESIDUE ---
         # Create new columns for each residue name
@@ -138,6 +143,7 @@ def prepare_nodes(nodes):
 
         # --- HBOND ---
         # Take out the hbond donor/acceptor count as int
+        nodes = nodes.dropna(subset=['hbond_donors', 'hbond_acceptors'])
         nodes['hbond_donors'] = nodes['hbond_donors'].astype(int)
         nodes['hbond_acceptors'] = nodes['hbond_acceptors'].astype(int)
         # ---------------

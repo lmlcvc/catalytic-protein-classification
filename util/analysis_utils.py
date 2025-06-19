@@ -19,11 +19,14 @@ model_dir = config['model_dir']
 analysis_dir = config['analysis_dir']
 targets_dir = config['targets_dir']
 graph_dir = config['graph_dir']
+demo_graph_dir = config['demo_graph_dir']
 aas_dir = config['aas_dir']
 
-node_feature_names = ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", "dim_1", "dim_2",
-                      "dim_3", "dim_4", "dim_5", "dim_6", "dim_7", "sidechain_vector_x", "sidechain_vector_y",
-                      "sidechain_vector_z"
+node_feature_names = ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", 
+                     "aa_pca_01", "aa_pca_02", "aa_pca_03", "aa_pca_04", "aa_pca_05",
+                     "aa_pca_06", "aa_pca_07", "aa_pca_08", "aa_pca_09", "aa_pca_10",
+                     "dim_1", "dim_2", "dim_3", "dim_4", "dim_5", "dim_6", "dim_7",
+                     "sidechain_vector_x", "sidechain_vector_y", "sidechain_vector_z"
                       ]
 
 
@@ -215,7 +218,10 @@ def extract_relevant_gradients(protein, gradients, mode):
         max_gradients.reset_index(inplace=True)
         max_gradients.rename(columns={'index': 'index'}, inplace=True)
     elif mode == 'edge':
-        edge_df = pd.read_csv(os.path.join(graph_dir, f'{protein}_edges.csv'))
+        if config['demo_run'] == 'Y':
+            edge_df = pd.read_csv(os.path.join(demo_graph_dir, f'{protein}_edges.csv'))
+        else:
+            edge_df = pd.read_csv(os.path.join(graph_dir, protein, f'{protein}_edges.csv'))
 
         # Extract numbers from the source and target columns
         max_gradients['source_index'] = edge_df['source'].str.extract(r'(\d+)')

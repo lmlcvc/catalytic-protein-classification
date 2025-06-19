@@ -55,81 +55,69 @@ def check_and_generate_targets():
 
 
 def generate_graphs():
+    # Choose paths based on demo_run
     if demo_run.lower() == "y":
-        if not os.listdir(demo_graph_dir):
-            # Delete targets and start anew every time
-            targets_file_path = os.path.join(targets_dir, "targets.txt")
-            if os.path.exists(targets_file_path):
-                os.remove(targets_file_path)
-
-            cdir = os.path.join(pdb_demo_dir, "catalytic")
-            ncdir = os.path.join(pdb_demo_dir, "non-catalytic")
-            for entry in os.listdir(cdir):
-                pdb_id = entry.replace(".pdb", "")
-                if gu.generate_graph(cdir, pdb_id, demo_graph_dir):
-                    with open(targets_file_path, "a") as targets_file:
-                        targets_file.write(f"{pdb_id}\t1\n")
-                else:
-                    logging.warning(f"Failed to generate graph for {pdb_id}")
-            logging.info("Generated catalytic graphs")
-
-            for entry in os.listdir(ncdir):
-                pdb_id = entry.replace(".pdb", "")
-                if gu.generate_graph(ncdir, pdb_id, demo_graph_dir):
-                    with open(targets_file_path, "a") as targets_file:
-                        targets_file.write(f"{pdb_id}\t0\n")
-                else:
-                    logging.warning(f"Failed to generate graph for {pdb_id}")
-            logging.info("Generated non-catalytic graphs")
-
+        graph_dir_to_use = demo_graph_dir
+        pdb_catalytic_dir_to_use = os.path.join(pdb_demo_dir, "catalytic")
+        pdb_non_catalytic_dir_to_use = os.path.join(pdb_demo_dir, "non-catalytic")
     else:
-        if not os.listdir(graph_dir):
-            df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep="\s+", skip_blank_lines=True,
-                             na_values=[''])
+        graph_dir_to_use = graph_dir
+        pdb_catalytic_dir_to_use = pdb_catalytic_dir
+        pdb_non_catalytic_dir_to_use = pdb_non_catalytic_dir
+
+    if not os.listdir(graph_dir_to_use):
+        # Delete targets and start anew every time
+        targets_file_path = os.path.join(targets_dir, "targets.txt")
+        if os.path.exists(targets_file_path):
+            os.remove(targets_file_path)
+
+        # For non-demo, filter catalytic entries by PDBannot.txt
+        if demo_run.lower() != "y":
+            df = pd.read_csv(os.path.join(targets_dir, "PDBannot.txt"), sep=r"\s+", skip_blank_lines=True, na_values=[''])
             df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
             df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
+            catalytic_entries = [entry for entry in os.listdir(pdb_catalytic_dir_to_use)
+                                 if entry.replace(".pdb", "") in df["PDB_ID"].values]
+        else:
+            catalytic_entries = os.listdir(pdb_catalytic_dir_to_use)
 
-            # Delete targets and start anew every time
-            targets_file_path = os.path.join(targets_dir, "targets.txt")
-            if os.path.exists(targets_file_path):
-                os.remove(targets_file_path)
+        failed_graphs = []
 
-            # List to store names of failed graph generation attempts
-            failed_graphs = []
+        # Catalytic graphs
+        for entry in catalytic_entries:
+            pdb_id = entry.replace(".pdb", "")
+            if gu.generate_graph(pdb_catalytic_dir_to_use, pdb_id, graph_dir_to_use):
+                with open(targets_file_path, "a") as targets_file:
+                    targets_file.write(f"{pdb_id}\t1\n")
+            else:
+                logging.warning(f"Failed to generate graph for {pdb_id}")
+                failed_graphs.append(pdb_id)
+        logging.info("Generated catalytic graphs")
 
-            # Generate graphs only for entries in pdb_catalytic_dir that have corresponding entries in df["PDB_ID"]
-            for entry in os.listdir(pdb_catalytic_dir):
-                pdb_id = entry.replace(".pdb", "")
-                if pdb_id in df["PDB_ID"].values:
-                    if gu.generate_graph(pdb_catalytic_dir, pdb_id, graph_dir):
-                        with open(targets_file_path, "a") as targets_file:
-                            targets_file.write(f"{pdb_id}\t1\n")
-                    else:
-                        logging.warning(f"Failed to generate graph for {pdb_id}")
-                        failed_graphs.append(pdb_id)
-            logging.info("Generated catalytic graphs")
+        # Non-catalytic: for demo, use all; for non-demo, sample to match catalytic count
+        if demo_run.lower() == "y":
+            non_catalytic_entries = os.listdir(pdb_non_catalytic_dir_to_use)
+        else:
+            non_catalytic_entries = random.sample(
+                os.listdir(pdb_non_catalytic_dir_to_use),
+                len(os.listdir(graph_dir_to_use)) // 2
+            )
 
-            # Generate graphs for non-catalytic entries by randomly picking in the same quantity as catalytic entries
-            non_catalytic_entries = random.sample(os.listdir(pdb_non_catalytic_dir),
-                                                  len(os.listdir(graph_dir)) // 2)
-            for entry in non_catalytic_entries:
-                pdb_id = entry.replace(".pdb", "")
-                if gu.generate_graph(pdb_non_catalytic_dir, pdb_id, graph_dir):
-                    with open(targets_file_path, "a") as targets_file:
-                        targets_file.write(f"{pdb_id}\t0\n")
-                else:
-                    logging.warning(f"Failed to generate graph for {pdb_id}")
-                    failed_graphs.append(pdb_id)
-            logging.info("Generated non-catalytic graphs")
+        for entry in non_catalytic_entries:
+            pdb_id = entry.replace(".pdb", "")
+            if gu.generate_graph(pdb_non_catalytic_dir_to_use, pdb_id, graph_dir_to_use):
+                with open(targets_file_path, "a") as targets_file:
+                    targets_file.write(f"{pdb_id}\t0\n")
+            else:
+                logging.warning(f"Failed to generate graph for {pdb_id}")
+                failed_graphs.append(pdb_id)
+        logging.info("Generated non-catalytic graphs")
 
-            # Log the total number of failed graph generations and their names
-            if failed_graphs:
-                logging.info(f"Total number of files that failed to generate graphs: {len(failed_graphs)}")
-                logging.info("Files that failed to generate graphs:")
-                for failed in failed_graphs:
-                    logging.info(failed)
-
-            logging.info("Generated catalytic graphs")
+        if failed_graphs:
+            logging.info(f"Total number of files that failed to generate graphs: {len(failed_graphs)}")
+            logging.info("Files that failed to generate graphs:")
+            for failed in failed_graphs:
+                logging.info(failed)
 
 
 def load_graphs_and_labels():
@@ -137,7 +125,7 @@ def load_graphs_and_labels():
         return gu.load_graphs(demo_graph_dir), gu.load_graph_labels()
     else:
         return gu.load_graphs(graph_dir), gu.load_graph_labels()
-
+    
 
 def load_model():
     if use_dgcnn.lower() == "y":
@@ -178,7 +166,7 @@ def perform_model_training(generator, labels, run_dir, training_tensors):
                 print(model.summary())
 
                 # Save the model
-                model.save(os.path.join(model_dir, "gcn_model.h5"))
+                model.save(os.path.join(model_dir, "demo_gcn_model.h5"))
                 print("Demo GCN model trained and saved successfully.")
             else:
                 # Create and train classification models
@@ -268,6 +256,7 @@ if __name__ == "__main__":
     for i, graph in enumerate(test_graphs):
         protein = test_labels.index[i]
 
+        # FIXME nan predictions
         prediction = binary_predictions[i][0]
         print(f"Graph {i + 1} - {protein}:\n"
               f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(test_labels[i])}\n")
@@ -297,11 +286,11 @@ if __name__ == "__main__":
 
             if os.path.getsize(ranks_log_filepath) == 0:
                 writer.writerow(
-                    ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", "ALA", "ARG",
-                     "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET", "PHE",
-                     "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL", "dim_1", "dim_2",
-                     "dim_3", "dim_4", "dim_5", "dim_6", "dim_7", "sidechain_vector_x", "sidechain_vector_y",
-                     "sidechain_vector_z"
+                    ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", 
+                     "aa_pca_01", "aa_pca_02", "aa_pca_03", "aa_pca_04", "aa_pca_05",
+                     "aa_pca_06", "aa_pca_07", "aa_pca_08", "aa_pca_09", "aa_pca_10",
+                     "dim_1", "dim_2", "dim_3", "dim_4", "dim_5", "dim_6", "dim_7",
+                     "sidechain_vector_x", "sidechain_vector_y", "sidechain_vector_z"
                      ])
             writer.writerow(list(feature_ranking))
 
