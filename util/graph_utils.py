@@ -342,10 +342,14 @@ def load_graphs(source_directory):
         edges_df = pd.read_csv(os.path.join(source_directory, edges), index_col=0)
         nodes_df = pd.read_csv(os.path.join(source_directory, nodes), index_col=0)
 
-        if use_distance_as_weight.lower() == 'y':
-            graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df, edge_weight_column='distance'))
-        else:
-            graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
+        try:
+            if use_distance_as_weight.lower() == 'y':
+                graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df, edge_weight_column='distance'))
+            else:
+                graphs.append(StellarGraph(nodes=nodes_df, edges=edges_df))
+        except Exception as e:
+            logging.error(f"Failed to load graph from {nodes} and {edges}: {e}")
+            continue
 
     return graphs
 
