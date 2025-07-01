@@ -221,7 +221,7 @@ def extract_relevant_gradients(protein, gradients, mode):
         if config['demo_run'] == 'Y':
             edge_df = pd.read_csv(os.path.join(demo_graph_dir, f'{protein}_edges.csv'))
         else:
-            edge_df = pd.read_csv(os.path.join(graph_dir, protein, f'{protein}_edges.csv'))
+            edge_df = pd.read_csv(os.path.join(graph_dir, f'{protein}_edges.csv'))
 
         # Extract numbers from the source and target columns
         max_gradients['source_index'] = edge_df['source'].str.extract(r'(\d+)')
