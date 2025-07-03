@@ -98,7 +98,12 @@ def replace_categories(df, source_dir, df_type):
 
 def prepare_nodes(nodes):
     def get_pca_features(res_name, aa_pca_mapping):
-        return aa_pca_mapping.get(res_name, [0.0] * n_components)  # fallback if unknown
+        res_name_clean = res_name.strip().upper()
+        if res_name_clean in aa_pca_mapping:
+            return aa_pca_mapping[res_name_clean]
+        else:
+            print(f"[WARN] Unknown residue: {res_name_clean}")
+            return [0.0] * n_components
 
     try:
         # split coords into separate columns
@@ -118,6 +123,7 @@ def prepare_nodes(nodes):
         n_components = len(next(iter(aa_pca_mapping.values())))  # number of PCA components
         pca_features = nodes['residue_name'].apply(lambda res_name: get_pca_features(res_name, aa_pca_mapping))
         pca_df = pd.DataFrame(pca_features.tolist(), columns=[f'aa_pca_{i+1}' for i in range(n_components)])
+        pca_df.index = nodes.index
         nodes = pd.concat([nodes, pca_df], axis=1)
 
         # --- RESIDUE ---
@@ -369,7 +375,7 @@ def load_graph_labels(filename="targets.txt"):
         df.columns = ["index", "label"]
 
         df = df.set_index(df.columns[0])
-        df["label"] = df["label"].astype(float)
+        df["label"] = df["label"].astype(int)
 
         df = df.squeeze()
         return df

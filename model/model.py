@@ -31,17 +31,17 @@ def create_graph_classification_model_gcn(generator):
         layer_sizes=[64, 64, 32],
         activations=["relu", "relu", "relu"],
         generator=generator,
-        dropout=0.5,
+        dropout=0.2,
     )
 
     x_inp, x_out = gc_model.in_out_tensors()
     predictions = Dense(units=16, activation="relu")(x_out)
-    predictions = Dropout(0.5)(predictions)  
+    predictions = Dropout(0.2)(predictions)  
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
     # Create the Keras model and prepare it for training
     model = Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=Adam(0.001),
+    model.compile(optimizer=Adam(0.0005),
                   loss=binary_crossentropy,
                   metrics=[tf.keras.metrics.BinaryAccuracy(),
                            tf.keras.metrics.Precision(name='precision'),

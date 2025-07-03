@@ -47,6 +47,11 @@ def get_generators(generator, train_index, test_index, graph_labels, batch_size)
         test_index, targets=graph_labels.iloc[test_index].values, batch_size=batch_size
     )
 
+    for i, G in enumerate(generator.graphs):
+        if G.number_of_nodes() == 0 or G.number_of_edges() == 0:
+            print(f"Graph {i} is empty or disconnected!")
+
+
     return train_gen, test_gen
 
 
