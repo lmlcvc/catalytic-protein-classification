@@ -40,7 +40,7 @@ if graph_type == "residue":
         amino_acid.hydrogen_bond_donor,
         amino_acid.hydrogen_bond_acceptor,
         # amino_acid.expasy_protein_scale,
-        amino_acid.meiler_embedding
+        # amino_acid.meiler_embedding
     ]
 
     edge_construction_funcs = [
@@ -118,33 +118,14 @@ def prepare_nodes(nodes):
         nodes = nodes.drop(['residue_number', 'chain_id', 'coords'], axis=1)
 
         # --- AA PCA ---
+        # Load the PCA mapping from a JSON file and replace residue names with PCA features
         with open(config['aa_pca_mapping']) as f:
             aa_pca_mapping = json.load(f)
-        n_components = len(next(iter(aa_pca_mapping.values())))  # number of PCA components
+        n_components = len(next(iter(aa_pca_mapping.values()))) 
         pca_features = nodes['residue_name'].apply(lambda res_name: get_pca_features(res_name, aa_pca_mapping))
         pca_df = pd.DataFrame(pca_features.tolist(), columns=[f'aa_pca_{i+1}' for i in range(n_components)])
         pca_df.index = nodes.index
         nodes = pd.concat([nodes, pca_df], axis=1)
-
-        # --- RESIDUE ---
-        # Create new columns for each residue name
-        # residue_names = ["ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE", "LEU", "LYS", "MET",
-        #                  "PHE",
-        #                  "PRO", "PYL", "SEC", "SER", "THR", "TRP", "TYR", "VAL"]
-        
-        # res_names_encoded = pd.DataFrame()
-        # for residue in residue_names:
-        #     # 1 if that kind was present in edges[kind], otherwise 0
-        #     res_names_encoded[residue] = nodes['residue_name'].apply(
-        #         lambda x: 1 if residue in x.replace("'", "") else 0)
-
-        # # Check for values in 'residue_name' not present in residue_names
-        # unknown_residues = nodes['residue_name'][~nodes['residue_name'].isin(residue_names)].unique()
-        # if len(unknown_residues) > 0:
-        #     unknown_residues_str = ', '.join(unknown_residues)
-        #     print(f"Warning: Residue name found in residue_names: {unknown_residues_str}")
-
-        # nodes = pd.concat([nodes, res_names_encoded], axis=1)
         # ---------------
 
         # --- HBOND ---
@@ -156,10 +137,10 @@ def prepare_nodes(nodes):
 
         # --- MEILER ---
         # Extract Meiler dims into separate columns
-        for index, row in nodes.iterrows():
-            for dim_num in range(1, 8):
-                dim_col_name = f'dim_{dim_num}'
-                nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]
+        # for index, row in nodes.iterrows():
+        #     for dim_num in range(1, 8):
+        #         dim_col_name = f'dim_{dim_num}'
+        #         nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]
         # ---------------
 
         # Extract vector (x, y, z) into separate columns
