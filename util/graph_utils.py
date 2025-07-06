@@ -178,7 +178,12 @@ def prepare_nodes(nodes):
         elif graph_type == "residue":
             nodes = nodes.drop(
                 [
-                    'atom_type', 'element_symbol', 'residue_name', 'meiler', 'sidechain_vector', 'c_beta_vector'
+                    'atom_type', 
+                    'element_symbol', 
+                    'residue_name', 
+                    'meiler', 
+                    'sidechain_vector', 
+                    'c_beta_vector'
                     # 'sequence_neighbour_vector_n_to_c'
                 ],
                 axis=1)
