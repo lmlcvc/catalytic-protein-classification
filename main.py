@@ -44,6 +44,7 @@ shap_dir = config['shap_dir']
 # generation
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+# TODO rename all inference to testing
 
 def check_and_generate_targets():
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
@@ -209,7 +210,7 @@ if __name__ == "__main__":
     # Prepare input graph data for training and testing
     graphs, graph_labels = load_graphs_and_labels()
     train_graphs, test_graphs, train_labels, test_labels = train_test_split(
-        graphs, graph_labels, test_size=0.2, random_state=42
+        graphs, graph_labels, test_size=0.2, random_state=42, stratify=graph_labels
     )
     graph_generator = PaddedGraphGenerator(graphs=train_graphs)
     inference_generator = PaddedGraphGenerator(graphs=test_graphs)
