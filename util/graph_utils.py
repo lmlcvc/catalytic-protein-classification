@@ -181,7 +181,7 @@ def prepare_nodes(nodes):
                     'atom_type', 
                     'element_symbol', 
                     'residue_name', 
-                    'meiler', 
+                    # 'meiler', 
                     'sidechain_vector', 
                     'c_beta_vector'
                     # 'sequence_neighbour_vector_n_to_c'
