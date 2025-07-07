@@ -2,9 +2,10 @@ import tensorflow as tf
 from stellargraph.layer import DeepGraphCNN
 from stellargraph.layer import GCNSupervisedGraphClassification
 from tensorflow.keras import Model, Input
-from tensorflow.keras.layers import Dense, Dropout
-from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras import regularizers
 
 
 def in_out_tensors(generator, model):
@@ -28,24 +29,34 @@ def in_out_tensors(generator, model):
 
 def create_graph_classification_model_gcn(generator):
     gc_model = GCNSupervisedGraphClassification(
-        layer_sizes=[64, 64, 32],
+        layer_sizes=[128, 128, 64],
         activations=["relu", "relu", "relu"],
         generator=generator,
-        dropout=0.2,
+        dropout=0.1,  
     )
 
     x_inp, x_out = gc_model.in_out_tensors()
-    predictions = Dense(units=16, activation="relu")(x_out)
-    predictions = Dropout(0.2)(predictions)  
+    x_out = BatchNormalization()(x_out)
+
+    predictions = Dense(
+        units=32, 
+        kernel_regularizer=regularizers.l2(1e-4) 
+    )(x_out)
+    predictions = LeakyReLU(alpha=0.1)(predictions)
+    predictions = Dropout(0.3)(predictions)  
+
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
-    # Create the Keras model and prepare it for training
     model = Model(inputs=x_inp, outputs=predictions)
-    model.compile(optimizer=Adam(0.0005),
-                  loss=binary_crossentropy,
-                  metrics=[tf.keras.metrics.BinaryAccuracy(),
-                           tf.keras.metrics.Precision(name='precision'),
-                           tf.keras.metrics.Recall(name='recall')])
+    model.compile(
+        optimizer=Adam(learning_rate=0.0003),
+        loss=binary_crossentropy,
+        metrics=[
+            tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
+            tf.keras.metrics.Precision(name='precision'),
+            tf.keras.metrics.Recall(name='recall')
+        ]
+    )
 
     return model
 
