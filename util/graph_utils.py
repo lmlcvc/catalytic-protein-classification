@@ -102,7 +102,7 @@ def prepare_nodes(nodes):
         if res_name_clean in aa_pca_mapping:
             return aa_pca_mapping[res_name_clean]
         else:
-            print(f"[WARN] Unknown residue: {res_name_clean}")
+            logging.warning(f"Unknown residue: {res_name_clean}")
             return [0.0] * n_components
 
     try:
@@ -193,7 +193,7 @@ def prepare_nodes(nodes):
         return nodes
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return None
 
 
@@ -216,7 +216,7 @@ def prepare_edges(edges):
         # Warn if there are values in 'kind' that are not present in edge_kinds
         unknown_kinds = set(edges['kind'].str.split(', ').sum()) - set(edge_kinds)
         if unknown_kinds:
-            print(f"Warning: Edge kind(s) not in column names: {unknown_kinds}")
+            logging.warning(f"Edge kind(s) not in column names: {unknown_kinds}")
 
         # Apply changes to the original df
         edges = pd.concat([edges, edge_kinds_encoded], axis=1)
@@ -225,7 +225,7 @@ def prepare_edges(edges):
         return edges
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return None
 
 
