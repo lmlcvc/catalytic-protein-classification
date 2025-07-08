@@ -106,16 +106,13 @@ def prepare_nodes(nodes):
             return [0.0] * n_components
 
     try:
+        # Set index to chain_id:residue_name:residue_number
+        # nodes = nodes.dropna(subset=['chain_id', 'residue_name', 'residue_number'])
+        # nodes['node_id'] = nodes['chain_id'].astype(str) + ':' + nodes['residue_name'].astype(str) + ':' + nodes['residue_number'].astype(str)
+        # nodes = nodes.set_index('node_id')
+
         # split coords into separate columns
         nodes[['coord_x', 'coord_y', 'coord_z']] = pd.DataFrame(nodes.coords.tolist(), index=nodes.index)
-
-        # Set index to chain_id:residue_name:residue_number
-        nodes = nodes.dropna(subset=['chain_id', 'residue_name', 'residue_number'])
-        nodes['node_id'] = nodes['chain_id'].astype(str) + ':' + nodes['residue_name'].astype(str) + ':' + nodes['residue_number'].astype(str)
-        nodes = nodes.set_index('node_id')
-
-        # remove unnecessary columns
-        nodes = nodes.drop(['residue_number', 'chain_id', 'coords'], axis=1)
 
         # --- AA PCA ---
         # Load the PCA mapping from a JSON file and replace residue names with PCA features
@@ -130,7 +127,8 @@ def prepare_nodes(nodes):
 
         # --- HBOND ---
         # Take out the hbond donor/acceptor count as int
-        nodes = nodes.dropna(subset=['hbond_donors', 'hbond_acceptors'])
+        nodes['hbond_donors'] = nodes['hbond_donors'].fillna(0)
+        nodes['hbond_acceptors'] = nodes['hbond_acceptors'].fillna(0)
         nodes['hbond_donors'] = nodes['hbond_donors'].astype(int)
         nodes['hbond_acceptors'] = nodes['hbond_acceptors'].astype(int)
         # ---------------
@@ -179,11 +177,14 @@ def prepare_nodes(nodes):
             nodes = nodes.drop(
                 [
                     'atom_type', 
+                    'chain_id',
+                    'coords',
                     'element_symbol', 
                     'residue_name', 
+                    'residue_number',
                     # 'meiler', 
-                    'sidechain_vector', 
-                    'c_beta_vector'
+                    # 'sidechain_vector', 
+                    # 'c_beta_vector'
                     # 'sequence_neighbour_vector_n_to_c'
                 ],
                 axis=1)
@@ -239,11 +240,11 @@ def generate_graph(source_directory, entry, output_directory):
 
     try:
         graph = construct_graph(config=graphein_config,
-                                path=pdb_path,
-                                pdb_code=entry)
+                            path=pdb_path,
+                            pdb_code=entry)
 
-        geometry.add_sidechain_vector(graph)
-        geometry.add_beta_carbon_vector(graph)
+        # geometry.add_sidechain_vector(graph)
+        # geometry.add_beta_carbon_vector(graph)
         # geometry.add_sequence_neighbour_vector(graph)
 
         # atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']
@@ -253,16 +254,12 @@ def generate_graph(source_directory, entry, output_directory):
         edges = nx.to_pandas_edgelist(graph)
 
         nodes = prepare_nodes(nodes)
-        if nodes is None:
-            raise Exception("Nodes preparation failed")
-
         edges = prepare_edges(edges)
-        if edges is None:
-            raise Exception("Edges preparation failed")
 
         nodes.to_csv(os.path.join(output_directory, f"{entry}_nodes.csv"))
         edges.to_csv(os.path.join(output_directory, f"{entry}_edges.csv"))
         return True
+    
     except Exception as e:
         logging.error(f"PDB file {entry} failed to transform to graph: {e}")
         return False
