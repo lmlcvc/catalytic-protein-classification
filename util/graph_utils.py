@@ -44,6 +44,9 @@ if graph_type == "residue":
     ]
 
     edge_construction_funcs = [
+        # 0.67 - 8.68 -> min stat (avg. c +- stdev) - absolute max (b)
+        # 0.67 - 3.5 -> min stat (avg. c +- stdev) - max stat (avg. a +- stdev)
+        partial(distance.add_distance_threshold, long_interaction_threshold=8.68, threshold=0.67),
         distance.add_aromatic_interactions,
         distance.add_cation_pi_interactions,
         distance.add_aromatic_sulphur_interactions,
@@ -51,7 +54,6 @@ if graph_type == "residue":
         distance.add_hydrogen_bond_interactions,
         distance.add_hydrophobic_interactions,
         distance.add_ionic_interactions,
-        partial(distance.add_distance_threshold, long_interaction_threshold=0.67, threshold=3.5)
         # intramolecular.pi_stacking
         # intramolecular.salt_bridge,
         # intramolecular.t_stacking,
