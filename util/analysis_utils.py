@@ -155,7 +155,7 @@ def aa_freq_analysis(predictions, out_dir):
                     else:
                         aa_freq_data[aa]["false_negatives"] += 1
         else:
-            print(f"Skipping {label} due to misformated input")  # FIXME: should not be happening?
+            print(f"Skipping {label} due to misformated input")  
 
     json_file_path = os.path.join(out_dir, "aa_freqs.json")
     with open(json_file_path, 'w') as json_file:

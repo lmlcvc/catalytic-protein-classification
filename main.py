@@ -14,7 +14,6 @@ from sklearn.model_selection import train_test_split
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
 
-from model.model import in_out_tensors
 from model.train import train_model
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu, analysis_utils as au
 
@@ -212,6 +211,7 @@ if __name__ == "__main__":
     train_graphs, test_graphs, train_labels, test_labels = train_test_split(
         graphs, graph_labels, test_size=0.2, random_state=42, stratify=graph_labels
     )
+    
     graph_generator = PaddedGraphGenerator(graphs=train_graphs)
     inference_generator = PaddedGraphGenerator(graphs=test_graphs)
     training_tensors = graph_generator.flow(train_graphs, weighted=True, targets=train_labels)
@@ -234,9 +234,6 @@ if __name__ == "__main__":
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
 
-    x_t, mask, A_m = in_out_tensors(inference_generator, model)[0]
-    inputs = [x_t, mask, A_m]
-
     # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
     features_ranked_all = [[0 for j in range(inference_generator.node_features_size)] for i in
                            range(inference_generator.node_features_size)]
@@ -255,7 +252,6 @@ if __name__ == "__main__":
     for i, graph in enumerate(test_graphs):
         protein = test_labels.index[i]
 
-        # FIXME nan predictions
         prediction = binary_predictions[i][0]
         print(f"Graph {i + 1} - {protein}:\n"
               f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(test_labels[i])}\n")
@@ -271,25 +267,24 @@ if __name__ == "__main__":
         node_gradients = gradients[0]
         edge_gradients = gradients[-1]
 
-        # Saliency maps
+        # Saliency map
         node_saliency_map = vu.calculate_node_saliency(gradients[0])
-        edge_saliency_map = vu.calculate_edge_saliency(gradients[-1])
 
         # Feature importance ranking
         feature_importance = np.mean(np.abs(node_gradients[0].numpy()), axis=0)
         feature_ranking = np.argsort(feature_importance)[::-1]
 
-        # TODO: also do for edge
         with open(ranks_log_filepath, mode='a', newline='') as csv_file:
             writer = csv.writer(csv_file)
 
             if os.path.getsize(ranks_log_filepath) == 0:
                 writer.writerow(
                     ["b_factor", "hbond_donors", "hbond_acceptors", "coord_x", "coord_y", "coord_z", 
-                     "aa_pca_01", "aa_pca_02", "aa_pca_03", "aa_pca_04", "aa_pca_05",
-                     "aa_pca_06", "aa_pca_07", "aa_pca_08", "aa_pca_09", "aa_pca_10",
+                     "aa_pca_1", "aa_pca_2", "aa_pca_3", "aa_pca_4", "aa_pca_5",
+                     "aa_pca_6", "aa_pca_7", "aa_pca_8", "aa_pca_9", "aa_pca_10", "aa_pca_11",
                      "dim_1", "dim_2", "dim_3", "dim_4", "dim_5", "dim_6", "dim_7",
-                     "sidechain_vector_x", "sidechain_vector_y", "sidechain_vector_z"
+                     "sidechain_vector_x", "sidechain_vector_y", "sidechain_vector_z",
+                     "c_beta_vector_x", "c_beta_vector_y", "c_beta_vector_z"
                      ])
             writer.writerow(list(feature_ranking))
 
@@ -304,7 +299,6 @@ if __name__ == "__main__":
 
         # Visualize the saliency maps and save them as images
         vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
-        # vu.visualize_edge_heatmap(edge_saliency_map, os.path.join(run_dir, f"edge_saliency_map-{i}.png"))
 
         # Save relevant gradients for plotting and analysis
         node_df = au.extract_relevant_gradients(protein, node_gradients, mode='node')

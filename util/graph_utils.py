@@ -40,7 +40,7 @@ if graph_type == "residue":
         amino_acid.hydrogen_bond_donor,
         amino_acid.hydrogen_bond_acceptor,
         # amino_acid.expasy_protein_scale,
-        # amino_acid.meiler_embedding
+        amino_acid.meiler_embedding
     ]
 
     edge_construction_funcs = [
@@ -137,10 +137,10 @@ def prepare_nodes(nodes):
 
         # --- MEILER ---
         # Extract Meiler dims into separate columns
-        # for index, row in nodes.iterrows():
-        #     for dim_num in range(1, 8):
-        #         dim_col_name = f'dim_{dim_num}'
-        #         nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]
+        for index, row in nodes.iterrows():
+            for dim_num in range(1, 8):
+                dim_col_name = f'dim_{dim_num}'
+                nodes.loc[index, dim_col_name] = row['meiler'][dim_col_name]
         # ---------------
 
         # Extract vector (x, y, z) into separate columns
@@ -148,17 +148,17 @@ def prepare_nodes(nodes):
         # Then, loop through each row and assign vector values to the corresponding columns
 
         # # --- SIDECHAIN VECTOR ---
-        # for index, row in nodes.iterrows():
-        #     for direction_idx in range(0, 3):
-        #         direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
-        #         nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
+        for index, row in nodes.iterrows():
+            for direction_idx in range(0, 3):
+                direction_col_name = f'sidechain_vector_{direction_mapping[direction_idx]}'
+                nodes.loc[index, direction_col_name] = row['sidechain_vector'][direction_idx].round(2)
         # # ---------------
         #
         # # --- BETA-CARBON VECTOR ---
-        # for index, row in nodes.iterrows():
-        #     for direction_idx in range(0, 3):
-        #         direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
-        #         nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
+        for index, row in nodes.iterrows():
+            for direction_idx in range(0, 3):
+                direction_col_name = f'c_beta_vector_{direction_mapping[direction_idx]}'
+                nodes.loc[index, direction_col_name] = row['c_beta_vector'][direction_idx].round(2)
         # # ---------------
 
         # --- SEQUENCE NEIGHBOUR VECTOR ---
@@ -184,9 +184,9 @@ def prepare_nodes(nodes):
                     'element_symbol', 
                     'residue_name', 
                     'residue_number',
-                    # 'meiler', 
-                    # 'sidechain_vector', 
-                    # 'c_beta_vector'
+                    'meiler', 
+                    'sidechain_vector',        
+                    'c_beta_vector'
                     # 'sequence_neighbour_vector_n_to_c'
                 ],
                 axis=1)
@@ -245,8 +245,8 @@ def generate_graph(source_directory, entry, output_directory):
                             path=pdb_path,
                             pdb_code=entry)
 
-        # geometry.add_sidechain_vector(graph)
-        # geometry.add_beta_carbon_vector(graph)
+        geometry.add_sidechain_vector(graph)
+        geometry.add_beta_carbon_vector(graph)
         # geometry.add_sequence_neighbour_vector(graph)
 
         # atom_df = PandasPdb().read_pdb(pdb_path).df['ATOM']

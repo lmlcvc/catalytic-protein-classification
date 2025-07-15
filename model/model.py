@@ -29,7 +29,7 @@ def in_out_tensors(generator, model):
 
 def create_graph_classification_model_gcn(generator):
     gc_model = GCNSupervisedGraphClassification(
-        layer_sizes=[128, 128, 64],
+        layer_sizes=[64, 64, 32],
         activations=["relu", "relu", "relu"],
         generator=generator,
         dropout=0.1,  
@@ -49,7 +49,7 @@ def create_graph_classification_model_gcn(generator):
 
     model = Model(inputs=x_inp, outputs=predictions)
     model.compile(
-        optimizer=Adam(learning_rate=0.0003),
+        optimizer=Adam(learning_rate=0.0005),
         loss=binary_crossentropy,
         metrics=[
             tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),

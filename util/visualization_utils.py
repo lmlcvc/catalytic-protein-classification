@@ -19,20 +19,52 @@ config = config['default']
 
 model_dir = config['model_dir']
 
-node_feature_names = ["Residue name",
-                      "B-factor",
-                      "X coordinate",
-                      "Y coordinate",
-                      "Z coordinate"]
+node_feature_names = ["b_factor",
+                      "hbond_donors",
+                      "hbond_acceptors",
+                      "coord_x",
+                      "coord_y",
+                      "coord_z",
+                      "aa_pca_1",
+                      "aa_pca_2",
+                      "aa_pca_3",
+                      "aa_pca_4",
+                      "aa_pca_5",
+                      "aa_pca_6",
+                      "aa_pca_7",
+                      "aa_pca_8",
+                      "aa_pca_9",
+                      "aa_pca_10",
+                      "aa_pca_11",
+                      "meiler_1",
+                      "meiler_2",
+                      "meiler_3",
+                      "meiler_4",
+                      "meiler_5",
+                      "meiler_6",
+                      "meiler_7",
+                      "sidechain_vector_x", "sidechain_vector_y", "sidechain_vector_z",
+                      "c_beta_vector_x", "c_beta_vector_y", "c_beta_vector_z"
+]
 
-edge_feature_names = [
-    "source", "target", "distance", "aromatic", "aromatic_sulphur", "cation_pi", "disulfide", "hbond", "hydrophobic",
-    "ionic", "protein_bond"
+edge_feature_names = ["source", 
+                      "target", 
+                      "distance", 
+                      "aromatic", 
+                      "aromatic_sulphur", 
+                      "cation_pi",
+                      "disulfide", 
+                      "hbond",
+                      "hydrophobic",
+                      "ionic",
+                      "protein_bond",
+                      "distance_threshold"
 ]
 
 
 def plot_gradients(df, mode, output_dir, as_df=None, n=20):
     """
+    TODO: take active site entries out of df
     Plot how many nodes pass gradient thresholds from a range of n elements.
 
     Args:
