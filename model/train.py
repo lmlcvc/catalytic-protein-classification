@@ -150,6 +150,5 @@ def train_model(graph_generator, graph_labels, run_dir, training_tensors, epochs
     plt.hist(test_accs)
     plt.xlabel("Accuracy")
     plt.ylabel("Count")
-    plt.show()
 
     return best_model

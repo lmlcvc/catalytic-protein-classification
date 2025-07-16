@@ -325,7 +325,7 @@ if __name__ == "__main__":
     # au.active_site_comparison(relevant_nodes_dict, analysis_run_dir)
     # au.generate_triad_combinations(relevant_nodes_dict, analysis_run_dir)
 
-    # class-aggregated analysis
+    # # class-aggregated analysis
     # au.class_aggregation(features_ranked_all, analysis_run_dir, "all")
     # au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
     # au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
