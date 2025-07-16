@@ -43,8 +43,6 @@ shap_dir = config['shap_dir']
 # generation
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# TODO rename all inference to testing
-
 def check_and_generate_targets():
     if not os.path.isdir(targets_dir) or not os.listdir(targets_dir):
         if demo_run.lower() == "y":
@@ -212,21 +210,21 @@ if __name__ == "__main__":
         graphs, graph_labels, test_size=0.2, random_state=42, stratify=graph_labels
     )
     
-    graph_generator = PaddedGraphGenerator(graphs=train_graphs)
-    inference_generator = PaddedGraphGenerator(graphs=test_graphs)
-    training_tensors = graph_generator.flow(train_graphs, weighted=True, targets=train_labels)
-    inference_tensors = inference_generator.flow(test_graphs, weighted=True, targets=test_labels)
+    train_graph_generator = PaddedGraphGenerator(graphs=train_graphs)
+    test_graph_generator = PaddedGraphGenerator(graphs=test_graphs)
+    train_tensors = train_graph_generator.flow(train_graphs, weighted=True, targets=train_labels)
+    test_tensors = test_graph_generator.flow(test_graphs, weighted=True, targets=test_labels)
 
     # Load or train model
     if not load_model():
-        model = perform_model_training(graph_generator, train_labels, run_dir, training_tensors)
+        model = perform_model_training(train_graph_generator, train_labels, run_dir, train_tensors)
     else:
         model = load_model()
         if model is None:
             raise ValueError("Model cannot be None")
 
     # Make predictions using the loaded model
-    predictions = model.predict(inference_tensors)
+    predictions = model.predict(test_tensors)
 
     # Visualise predictions histogram
     vu.visualise_predictions(predictions, test_labels.to_list(), os.path.join(run_dir, "predictions"))
@@ -234,15 +232,15 @@ if __name__ == "__main__":
     # Convert the predictions to binary class labels (0 or 1)
     binary_predictions = np.round(predictions).astype(int)
 
-    # Compute and visualise Grad-CAM heatmaps for each sample in the inference dataset
-    features_ranked_all = [[0 for j in range(inference_generator.node_features_size)] for i in
-                           range(inference_generator.node_features_size)]
+    # Compute and visualise Grad-CAM heatmaps for each sample in the test dataset
+    features_ranked_all = [[0 for j in range(test_graph_generator.node_features_size)] for i in
+                           range(test_graph_generator.node_features_size)]
 
-    features_ranked_positive = [[0 for j in range(inference_generator.node_features_size)] for i in
-                                range(inference_generator.node_features_size)]
+    features_ranked_positive = [[0 for j in range(test_graph_generator.node_features_size)] for i in
+                                range(test_graph_generator.node_features_size)]
 
-    features_ranked_negative = [[0 for j in range(inference_generator.node_features_size)] for i in
-                                range(inference_generator.node_features_size)]
+    features_ranked_negative = [[0 for j in range(test_graph_generator.node_features_size)] for i in
+                                range(test_graph_generator.node_features_size)]
 
     ranks_log_filepath = os.path.join(analysis_run_dir, f"feature_ranks.csv")
 
@@ -257,7 +255,7 @@ if __name__ == "__main__":
               f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(test_labels[i])}\n")
 
         # Get the input features for the sample
-        inputs = inference_tensors[i][0]
+        inputs = test_tensors[i][0]
         if inputs is None:
             print(f"Skipping graph {i + 1} due to None input.")
             continue
@@ -330,7 +328,7 @@ if __name__ == "__main__":
     # au.class_aggregation(features_ranked_positive, analysis_run_dir, "positive")
     # au.class_aggregation(features_ranked_negative, analysis_run_dir, "negative")
 
-    # Correlation matrix of feature ranking in inference
+    # Correlation matrix of feature ranking in testing
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
     vu.evaluate_model(binary_predictions, test_labels, both_classes_present=True)

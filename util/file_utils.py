@@ -221,7 +221,7 @@ def generate_ground_truth(pdb_source_directory):
     lines_filtered.sort(key=str.lower)
 
     create_folder(targets_dir)
-    targets_file = open(os.path.join(targets_dir, "inference_truth.txt"), "w")
+    targets_file = open(os.path.join(targets_dir, "test_truth.txt"), "w")
     targets_file.write("\n".join(line for line in lines_filtered))
 
 
@@ -255,7 +255,7 @@ def generate_aa_json():
 
     observed_pos - positive class proteins from whole dataset containing given AA
     observed_neg - negative class proteins from whole dataset containing given AA
-    true_positives, false_positives, true_negatives, false_negatives - inference correctness stats
+    true_positives, false_positives, true_negatives, false_negatives - test correctness stats
     """
     with open(os.path.join(aas_dir, "aas_by_protein.json"), 'r') as json_file:
         protein_data = json.load(json_file)

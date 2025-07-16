@@ -223,12 +223,12 @@ def active_site_comparison(data, output_dir):
     df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].fillna(-1)
     df[['Residue_1', 'Residue_2', 'Residue_3']] = df[['Residue_1', 'Residue_2', 'Residue_3']].astype(int)
 
-    inference_proteins = data.keys()
+    test_proteins = data.keys()
     results = []
     for index, row in df.iterrows():
         protein = row['PDB_ID']
-        if protein not in inference_proteins:
-            print(f"{protein} not in inference. Skipping.")
+        if protein not in test_proteins:
+            print(f"{protein} not in testing. Skipping.")
         else:
             nodes_list = data[protein]['index'].tolist()  # Convert DataFrame to list of node indexes
             res1 = int(row['Residue_1'])
