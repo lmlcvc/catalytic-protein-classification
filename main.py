@@ -251,8 +251,9 @@ if __name__ == "__main__":
         protein = test_labels.index[i]
 
         prediction = binary_predictions[i][0]
+        actual = round(test_labels[i])
         print(f"Graph {i + 1} - {protein}:\n"
-              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {round(test_labels[i])}\n")
+              f"Predicted class - {prediction} ({predictions[i][0]:.2f})\n\t True class - {actual}\n")
 
         # Get the input features for the sample
         inputs = test_tensors[i][0]
@@ -298,25 +299,28 @@ if __name__ == "__main__":
         # Visualize the saliency maps and save them as images
         vu.visualize_node_heatmap(node_saliency_map, os.path.join(run_dir, f"node_saliency_map-{i}.png"))
 
-        # Save relevant gradients for plotting and analysis
-        node_df = au.extract_relevant_gradients(protein, node_gradients, mode='node')
-        node_dataframes.append(node_df)
-        relevant_nodes_dict[protein] = node_df
+        # Save catalytic protein relevant gradients for plotting and analysis
+        if actual == 1:
+            node_df = au.extract_relevant_gradients(protein, node_gradients, mode='node')
+            node_dataframes.append(node_df)
+            relevant_nodes_dict[protein] = node_df
 
-        edge_df = au.extract_relevant_gradients(protein, edge_gradients, mode='edge')
-        edge_dataframes.append(edge_df)
+            edge_df = au.extract_relevant_gradients(protein, edge_gradients, mode='edge')
+            edge_dataframes.append(edge_df)
 
     # Testing set gradient plotting
-    most_relevant_nodes = pd.concat(node_dataframes, ignore_index=True)
-    most_relevant_nodes_sorted = most_relevant_nodes.sort_values(by='gradient', ascending=False)
-    active_site_nodes = au.filter_active_site_gradients_node(most_relevant_nodes_sorted)
+    all_nodes_gradients = pd.concat(node_dataframes, ignore_index=True)
+    nodes_gradients_sorted = all_nodes_gradients.sort_values(by='gradient', ascending=False)
+    active_site_nodes = au.filter_active_site_gradients_node(nodes_gradients_sorted)
+    non_active_site_nodes = nodes_gradients_sorted.drop(active_site_nodes.index)
 
-    most_relevant_edges = pd.concat(edge_dataframes, ignore_index=True)
-    most_relevant_edges_sorted = most_relevant_edges.sort_values(by='gradient', ascending=False)
-    active_site_edges = au.filter_active_site_gradients_edges(most_relevant_edges_sorted)
+    all_edges_gradients = pd.concat(edge_dataframes, ignore_index=True)
+    edges_gradients_sorted = all_edges_gradients.sort_values(by='gradient', ascending=False)
+    active_site_edges = au.filter_active_site_gradients_edges(edges_gradients_sorted)
+    non_active_site_edges = edges_gradients_sorted.drop(active_site_edges.index)
 
-    vu.plot_gradients(most_relevant_nodes_sorted, mode='testing_node', output_dir=run_dir, as_df=active_site_nodes)
-    vu.plot_gradients(most_relevant_edges_sorted, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)
+    vu.plot_gradients(non_active_site_nodes, mode='testing_node', output_dir=run_dir, as_df=active_site_nodes)
+    vu.plot_gradients(non_active_site_edges, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)
 
     # Active site comparison (gradient vs. ground truth)
     # TODO: uncomment after determining threshold
@@ -332,4 +336,4 @@ if __name__ == "__main__":
     vu.feature_correlations(ranks_log_filepath, analysis_run_dir)
 
     vu.evaluate_model(binary_predictions, test_labels, both_classes_present=True)
-    # vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))
+    vu.save_feature_rankings(features_ranked_all, os.path.join(run_dir, "feature_rankings.txt"))

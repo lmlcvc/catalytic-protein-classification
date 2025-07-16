@@ -64,7 +64,6 @@ edge_feature_names = ["source",
 
 def plot_gradients(df, mode, output_dir, as_df=None, n=20):
     """
-    TODO: take active site entries out of df
     Plot how many nodes pass gradient thresholds from a range of n elements.
 
     Args:
@@ -203,6 +202,7 @@ def calculate_prediction_counts(predictions, truth_labels, category_count):
 
 
 def visualise_predictions(predictions, truth_labels, output_dir, category_count=10):
+    # TODO fix...
     fu.create_folder(output_dir)
 
     non_catalytic_predictions, \
