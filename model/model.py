@@ -29,8 +29,8 @@ def in_out_tensors(generator, model):
 
 def create_graph_classification_model_gcn(generator):
     gc_model = GCNSupervisedGraphClassification(
-        layer_sizes=[64, 64, 32],
-        activations=["relu", "relu", "relu"],
+        layer_sizes=[64, 32],
+        activations=["relu", "relu"],
         generator=generator,
         dropout=0.1,  
     )
