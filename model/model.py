@@ -29,10 +29,10 @@ def in_out_tensors(generator, model):
 
 def create_graph_classification_model_gcn(generator):
     gc_model = GCNSupervisedGraphClassification(
-        layer_sizes=[64, 32],
-        activations=["relu", "relu"],
+        layer_sizes=[128, 64, 32],
+        activations=["relu", "relu", "relu"],
         generator=generator,
-        dropout=0.1,  
+        dropout=0.05,  
     )
 
     x_inp, x_out = gc_model.in_out_tensors()
@@ -43,7 +43,7 @@ def create_graph_classification_model_gcn(generator):
         kernel_regularizer=regularizers.l2(1e-4) 
     )(x_out)
     predictions = LeakyReLU(alpha=0.1)(predictions)
-    predictions = Dropout(0.3)(predictions)  
+    predictions = Dropout(0.1)(predictions)  
 
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
