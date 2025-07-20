@@ -40,16 +40,15 @@ def create_graph_classification_model_gcn(generator):
 
     predictions = Dense(
         units=32, 
-        kernel_regularizer=regularizers.l2(1e-3) 
+        kernel_regularizer=regularizers.l2(1e-4) 
     )(x_out)
     predictions = LeakyReLU(alpha=0.1)(predictions)
     predictions = Dropout(0.1)(predictions)  
-
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
     model = Model(inputs=x_inp, outputs=predictions)
     model.compile(
-        optimizer=Adam(learning_rate=0.00005),
+        optimizer=Adam(learning_rate=0.0001),
         loss=binary_crossentropy,
         metrics=[
             tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
