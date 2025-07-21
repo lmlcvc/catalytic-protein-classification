@@ -94,7 +94,7 @@ def plot_gradients(df, mode, output_dir, as_df=None, n=20):
         counts.append(percentage)
 
     # Plot the gradient counts
-    plt.plot(gradient_range, counts, marker='o', label='overall')
+    plt.plot(gradient_range, counts, marker='o', label='non-active site')
 
     # Plot the gradient counts for as_df if provided
     if as_df is not None:
@@ -108,7 +108,7 @@ def plot_gradients(df, mode, output_dir, as_df=None, n=20):
 
     plt.xlabel('Threshold')
     plt.ylabel('Rows [%]')
-    plt.title(f'Proportion of {mode}s over gradient threshold')
+    plt.title(f'Proportion of [{mode}] over gradient threshold')
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(output_dir, f'gradient_thresholds_{mode}.png'))

@@ -319,8 +319,8 @@ if __name__ == "__main__":
     active_site_edges = au.filter_active_site_gradients_edges(edges_gradients_sorted)
     non_active_site_edges = edges_gradients_sorted.drop(active_site_edges.index)
 
-    vu.plot_gradients(non_active_site_nodes, mode='testing_node', output_dir=run_dir, as_df=active_site_nodes)
-    vu.plot_gradients(non_active_site_edges, mode='testing_edge', output_dir=run_dir, as_df=active_site_edges)
+    vu.plot_gradients(non_active_site_nodes, mode='test nodes', output_dir=run_dir, as_df=active_site_nodes)
+    vu.plot_gradients(non_active_site_edges, mode='test edges', output_dir=run_dir, as_df=active_site_edges)
 
     # Active site comparison (gradient vs. ground truth)
     # TODO: uncomment after determining threshold
