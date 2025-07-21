@@ -32,23 +32,17 @@ def create_graph_classification_model_gcn(generator):
         layer_sizes=[64, 64, 32],
         activations=["relu", "relu", "relu"],
         generator=generator,
-        dropout=0.05,  
+        dropout=0.2,
     )
 
     x_inp, x_out = gc_model.in_out_tensors()
-    x_out = BatchNormalization()(x_out)
-
-    predictions = Dense(
-        units=32, 
-        kernel_regularizer=regularizers.l2(1e-4) 
-    )(x_out)
-    predictions = LeakyReLU(alpha=0.1)(predictions)
-    predictions = Dropout(0.1)(predictions)  
+    predictions = Dense(units=16, activation="relu")(x_out)
+    predictions = Dropout(0.2)(predictions)  
     predictions = Dense(units=1, activation="sigmoid")(predictions)
 
     model = Model(inputs=x_inp, outputs=predictions)
     model.compile(
-        optimizer=Adam(learning_rate=0.0001),
+        optimizer=Adam(0.0005),
         loss=binary_crossentropy,
         metrics=[
             tf.keras.metrics.BinaryAccuracy(name='binary_accuracy'),
