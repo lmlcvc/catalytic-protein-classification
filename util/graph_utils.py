@@ -375,7 +375,7 @@ def generate_categories(source_directory, output_directory):
     edges_df = pd.DataFrame()
     nodes_df = pd.DataFrame()
 
-    filenames = sorted(os.listdir(source_directory))
+    filenames = sorted([f for f in os.listdir(source_directory) if f.endswith('.csv')])
     filename_pairs = [filenames[i:i + 2] for i in range(0, len(filenames), 2)]
 
     for edges, nodes in filename_pairs:
@@ -397,8 +397,8 @@ def generate_categories(source_directory, output_directory):
 def load_graphs(source_directory):
     graphs = []
 
-    filenames = sorted(os.listdir(source_directory))
-    filename_pairs = [filenames[i: i + 2] for i in range(0, len(filenames), 2)]
+    filenames = sorted([f for f in os.listdir(source_directory) if f.endswith('.csv')])
+    filename_pairs = [filenames[i:i + 2] for i in range(0, len(filenames), 2)]
 
     for edges, nodes in filename_pairs:
         if nodes[0:3] != edges[0:3]:
