@@ -350,50 +350,6 @@ def standardise_category(category):
     return ', '.join(sorted(category.split(', '), key=str.lower))
 
 
-def store_categories(df, column_list, output_directory, df_type="nodes"):
-    fu.create_folder(output_directory)
-
-    for column in column_list:
-        categories = df[str(column)].astype('category')
-        categories_dict = dict(enumerate(categories.cat.categories))
-
-        categories_df = pd.DataFrame(categories_dict, index=[0]).T
-        categories_df.reset_index(inplace=True)
-        categories_df.columns = ["category", "value"]
-        categories_df = categories_df.reindex(columns=["value", "category"])
-
-        categories_df["category"] = categories_df["category"].apply(standardise_category)
-
-        file_path = os.path.join(output_directory, f"{column}_{df_type}.csv")
-        if os.path.exists(file_path):
-            categories_df.to_csv(file_path, mode='a', header=False, index=None)
-        else:
-            categories_df.to_csv(file_path, index=None)
-
-
-def generate_categories(source_directory, output_directory):
-    edges_df = pd.DataFrame()
-    nodes_df = pd.DataFrame()
-
-    filenames = sorted([f for f in os.listdir(source_directory) if f.endswith('.csv')])
-    filename_pairs = [filenames[i:i + 2] for i in range(0, len(filenames), 2)]
-
-    for edges, nodes in filename_pairs:
-        if nodes[0:4] != edges[0:4]:
-            raise f"PDB names for (nodes, edges) pair do not match: {nodes}, {edges}"
-
-        edges_df = edges_df.append(pd.read_csv(os.path.join(source_directory, edges), index_col=0))
-        nodes_df = nodes_df.append(pd.read_csv(os.path.join(source_directory, nodes), index_col=0))
-
-    nodes_categories = ['residue_name']
-    edges_categories = ['kind']
-    if graph_type == "atom":
-        nodes_categories.extend(['atom_type', 'element_symbol'])
-
-    store_categories(nodes_df, nodes_categories, output_directory, df_type="nodes")
-    store_categories(edges_df, edges_categories, output_directory, df_type="edges")
-
-
 def load_graphs(source_directory):
     graphs = []
 
