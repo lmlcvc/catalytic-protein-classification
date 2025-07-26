@@ -16,6 +16,13 @@ from graphein.protein.graphs import construct_graph
 from graphein.protein.visualisation import plotly_protein_structure_graph
 from stellargraph import StellarGraph
 from functools import partial
+import joblib
+
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
 
 import util.file_utils as fu
 
@@ -30,7 +37,10 @@ targets_dir = config['targets_dir']
 graph_dir = config['graph_dir']
 categories_dir = config['categories_dir']
 file_list_dir = config['file_list_dir']
+graph_dir = config['graph_dir']
+
 use_distance_as_weight = config['use_distance_as_weight']
+use_feature_dimensionality_reduction = config['use_feature_dimensionality_reduction']
 
 # graphein config
 graphein_config = None
@@ -96,6 +106,64 @@ def replace_categories(df, source_dir, df_type):
         df = df.replace({str(column): categories_dict})
 
     return df
+
+
+def train_autoencoder(df, encoding_dim=15, epochs=100, batch_size=32):
+    feature_cols = [col for col in df.columns if df[col].dtype in [np.float32, np.float64, int]]
+    X = df[feature_cols].fillna(0).values
+
+    # Scale features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Build autoencoder
+    input_dim = X_scaled.shape[1]
+    input_layer = Input(shape=(input_dim,))
+    encoded = Dense(128, activation='relu')(input_layer)
+    encoded = Dense(64, activation='relu')(encoded)
+    bottleneck = Dense(encoding_dim, activation='linear')(encoded)
+
+    decoded = Dense(64, activation='relu')(bottleneck)
+    decoded = Dense(128, activation='relu')(decoded)
+    output_layer = Dense(input_dim, activation='linear')(decoded)
+
+    autoencoder = Model(input_layer, output_layer)
+    encoder = Model(input_layer, bottleneck)
+
+    autoencoder.compile(optimizer=Adam(1e-3), loss='mse')
+
+    # Fit autoencoder
+    autoencoder.fit(
+        X_scaled, X_scaled,
+        epochs=epochs,
+        batch_size=batch_size,
+        shuffle=True,
+        validation_split=0.1,
+        callbacks=[EarlyStopping(patience=10, restore_best_weights=True)],
+        verbose=0
+    )
+
+    encoder.save(f"{graph_dir}/encoder.h5")
+    joblib.dump(scaler, f"{graph_dir}/feature_scaler.pkl")
+    joblib.dump(feature_cols, f"{graph_dir}/feature_columns.pkl")
+
+
+def encode_with_autoencoder(df, encoding_dim=15):
+    assert os.path.exists(f"{graph_dir}/encoder.h5"), "Encoder file missing."
+    assert os.path.exists(f"{graph_dir}/feature_scaler.pkl"), "Scaler file missing."
+    assert os.path.exists(f"{graph_dir}/feature_columns.pkl"), "Feature columns file missing."
+
+    encoder = load_model(f"{graph_dir}/encoder.h5", compile=False)
+    scaler = joblib.load(f"{graph_dir}/feature_scaler.pkl")
+    feature_cols = joblib.load(f"{graph_dir}/feature_columns.pkl")
+
+    X = df[feature_cols].fillna(0).values
+    X_scaled = scaler.transform(X)
+
+    encoded_features = encoder.predict(X_scaled)
+    encoded_df = pd.DataFrame(encoded_features, index=df.index,
+                              columns=[f'enc_{i+1}' for i in range(encoding_dim)])
+    return encoded_df
 
 
 def prepare_nodes(nodes):
@@ -192,6 +260,12 @@ def prepare_nodes(nodes):
                 axis=1)
         else:
             raise f"Unexpected graph type argument: {graph_type}"
+        
+        if use_feature_dimensionality_reduction.lower() == 'y':
+            if not os.path.exists(f"{graph_dir}/encoder.h5") or not os.path.exists(f"{graph_dir}/feature_scaler.pkl"):
+                train_autoencoder(nodes)
+            
+            nodes = encode_with_autoencoder(nodes)
 
         return nodes
 
