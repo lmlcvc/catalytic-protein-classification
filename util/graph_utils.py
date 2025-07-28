@@ -263,9 +263,9 @@ def prepare_nodes(nodes):
         
         if use_feature_dimensionality_reduction.lower() == 'y':
             if not os.path.exists(f"{graph_dir}/encoder.h5") or not os.path.exists(f"{graph_dir}/feature_scaler.pkl"):
-                train_autoencoder(nodes)
+                train_autoencoder(nodes, encoding_dim=1)
             
-            nodes = encode_with_autoencoder(nodes)
+            nodes = encode_with_autoencoder(nodes, encoding_dim=1)
 
         return nodes
 
