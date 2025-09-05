@@ -56,7 +56,7 @@ if graph_type == "residue":
     edge_construction_funcs = [
         # 0.67 - 8.68 -> min stat (avg. c +- stdev) - absolute max (b)
         # 0.67 - 3.5 -> min stat (avg. c +- stdev) - max stat (avg. a +- stdev)
-        partial(distance.add_distance_threshold, long_interaction_threshold=4.03, threshold=1.29),
+        partial(distance.add_distance_threshold, long_interaction_threshold=4.03, threshold=1.75),
         distance.add_aromatic_interactions,
         distance.add_cation_pi_interactions,
         distance.add_aromatic_sulphur_interactions,
