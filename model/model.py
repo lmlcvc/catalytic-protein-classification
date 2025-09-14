@@ -47,8 +47,8 @@ def create_graph_classification_model_gcn(generator):
 
 
 def create_graph_classification_model_dgcnn(generator):
-    k = 35  # the number of rows for the output tensor
-    layer_sizes = [32, 32, 32, 1]
+    k = 192  # the number of rows for the output tensor
+    layer_sizes = [512, 256, 64, 1]
 
     dgcnn_model = DeepGraphCNN(
         layer_sizes=layer_sizes,
@@ -59,15 +59,18 @@ def create_graph_classification_model_dgcnn(generator):
     )
     x_inp, x_out = dgcnn_model.in_out_tensors()
 
-    x_out = tf.keras.layers.Conv1D(filters=16, kernel_size=sum(layer_sizes), strides=sum(layer_sizes))(x_out)
+    x_out = tf.keras.layers.Conv1D(filters=64, kernel_size=sum(layer_sizes), strides=sum(layer_sizes))(x_out)
     x_out = tf.keras.layers.MaxPool1D(pool_size=2)(x_out)
 
-    x_out = tf.keras.layers.Conv1D(filters=32, kernel_size=5, strides=1)(x_out)
+    x_out = tf.keras.layers.Conv1D(filters=128, kernel_size=5, strides=1)(x_out)
 
-    x_out = tf.keras.layers.Flatten()(x_out)
+    x_out = tf.keras.layers.Flatten(name="flatten_embedding")(x_out)
 
-    x_out = tf.keras.layers.Dense(units=128, activation="relu")(x_out)
-    x_out = tf.keras.layers.Dropout(rate=0.5)(x_out)
+    x_out = tf.keras.layers.Dense(units=256, activation="relu")(x_out)
+    x_out = tf.keras.layers.Dropout(0.3)(x_out)
+    
+    x_out = Dense(units=128, activation="relu")(x_out)
+    x_out = tf.keras.layers.Dropout(0.2)(x_out)
 
     predictions = tf.keras.layers.Dense(units=1, activation="sigmoid")(x_out)
 
