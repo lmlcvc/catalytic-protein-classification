@@ -28,7 +28,7 @@ config = config['default']
 use_dgcnn = config['use_dgcnn']
 
 es = EarlyStopping(
-    monitor="val_auc", min_delta=0, patience=25, restore_best_weights=True
+    monitor="val_loss", min_delta=0, patience=25, restore_best_weights=True
 )
 
 
