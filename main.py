@@ -170,9 +170,10 @@ def load_model(source=model_dir, fold=None):
         if not os.path.exists(os.path.join(source, f"model_{fold}.h5")):
             return None
         else:
-            model = tf.keras.models.load_model(os.path.join(source, f"model_{fold}.h5"))
-            print(model.summary())
-            return model
+            with tf.keras.utils.custom_object_scope({'SortPooling': SortPooling, 'GraphConvolution': GraphConvolution}):
+                model = tf.keras.models.load_model(os.path.join(source, f"model_{fold}.h5"))
+                print(model.summary())
+                return model
 
 
 def perform_model_training_kfold():
@@ -681,7 +682,27 @@ if __name__ == "__main__":
             model = perform_model_training()
 
     if args.benchmark and not args.inference:
-            perform_benchmark(model_dir=model_dir, split_dir=split_dir, graph_generator=graph_generator, graph_labels=graph_labels, fold=args.fold)
+        # If no fold specified, train on all folds
+        split_file = os.path.join(split_dir, 'fold_indices.pkl')
+        if not os.path.exists(split_file):
+            print(f"Fold indices not found at {split_file}. Generate with --generate-folds")
+        else:
+            with open(split_file, 'rb') as f:
+                all_splits = pickle.load(f)
+            folds = sorted(all_splits.keys())
+            if args.fold is None:
+                for fold_num in folds:
+                    model = load_model(source=model_dir, fold=fold_num)
+                    if model is None:
+                        print(f"Model for fold {fold_num} not found in {model_dir}")
+                        continue
+                    perform_benchmark(model_dir=model_dir, split_dir=split_dir, graph_generator=graph_generator, graph_labels=graph_labels, fold=fold_num, model=model)
+            else:
+                model = load_model(source=model_dir, fold=args.fold)
+                if model is None:
+                    print(f"Model for fold {args.fold} not found in {model_dir}")
+                else:
+                    perform_benchmark(model_dir=model_dir, split_dir=split_dir, graph_generator=graph_generator, graph_labels=graph_labels, fold=args.fold, model=model)
 
     if args.aggregate:
         aggregate_results(model_dir)

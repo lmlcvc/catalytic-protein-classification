@@ -157,18 +157,16 @@ def train_model_single(graph_generator, graph_labels, class_weights, train_index
     return model, history
 
 
-# calculate performance on the test data and return along with history
-def perform_benchmark(model_dir, split_dir, graph_generator, graph_labels, fold=None):
-    """For each fold (or single fold) load the DGCNN model up to the embedding layer
-    `flatten_embedding`, compute embeddings for train/val indices and train sklearn
-    SVM and RandomForest classifiers. Save classifiers and scalers under model_dir/benchmarks.
-
+def perform_benchmark(model_dir, split_dir, graph_generator, graph_labels, fold, model):
+    """
+    For a single fold, use the provided loaded model to extract embeddings, train SVM and RF, and save results.
     Args:
         model_dir (str): directory where per-fold Keras models are stored (model_{fold}.h5)
         split_dir (str): directory where fold indices file 'fold_indices.pkl' is stored
         graph_generator: PaddedGraphGenerator instance
         graph_labels: pandas Series of labels
-        fold (int|None): optional single fold to run
+        fold (int): fold number to run
+        model: loaded Keras model for this fold
     """
     bench_dir = os.path.join(model_dir, 'benchmarks')
     os.makedirs(bench_dir, exist_ok=True)
@@ -180,45 +178,41 @@ def perform_benchmark(model_dir, split_dir, graph_generator, graph_labels, fold=
     with open(split_file, 'rb') as f:
         all_splits = pickle.load(f)
 
-    folds_to_run = [fold] if fold is not None else sorted(all_splits.keys())
+    if fold not in all_splits:
+        print(f"Fold {fold} not found in split indices.")
+        return
 
-    for fold_num in folds_to_run:
-        print(f"Benchmarking fold {fold_num}")
+    print(f"Benchmarking fold {fold}")
 
-        # assume that model_{fold}.h5 exists for each fold
-        model_path = os.path.join(model_dir, f"model_{fold_num}.h5")
-        full_model = tf.keras.models.load_model(model_path, compile=False)
+    embed_layer = model.get_layer('flatten_embedding')
+    embedding_model = tf.keras.Model(inputs=model.input, outputs=embed_layer.output)
 
-        # directly use the embedding layer named 'flatten_embedding'
-        embed_layer = full_model.get_layer('flatten_embedding')
-        embedding_model = tf.keras.Model(inputs=full_model.input, outputs=embed_layer.output)
+    train_idx = all_splits[fold]['train']
+    val_idx = all_splits[fold]['val']
 
-        train_idx = all_splits[fold_num]['train']
-        val_idx = all_splits[fold_num]['val']
+    def compute_embeddings(indices):
+        gen = graph_generator.flow(indices, targets=None, batch_size=8, shuffle=False)
+        emb = embedding_model.predict(gen, verbose=0)
+        return emb
 
-        def compute_embeddings(indices):
-            gen = graph_generator.flow(indices, targets=None, batch_size=8, shuffle=False)
-            emb = embedding_model.predict(gen, verbose=0)
-            return emb
+    X_train = compute_embeddings(train_idx)
+    X_val = compute_embeddings(val_idx)
+    y_train = graph_labels.iloc[train_idx].values
+    y_val = graph_labels.iloc[val_idx].values
 
-        X_train = compute_embeddings(train_idx)
-        X_val = compute_embeddings(val_idx)
-        y_train = graph_labels.iloc[train_idx].values
-        y_val = graph_labels.iloc[val_idx].values
+    svm = make_pipeline(StandardScaler(), SVC(probability=True, kernel='rbf', C=1.0))
+    rf = RandomForestClassifier(n_estimators=200, random_state=42)
 
-        svm = make_pipeline(StandardScaler(), SVC(probability=True, kernel='rbf', C=1.0))
-        rf = RandomForestClassifier(n_estimators=200, random_state=42)
+    print('Training SVM...')
+    svm.fit(X_train, y_train)
+    print('Training RandomForest...')
+    rf.fit(X_train, y_train)
 
-        print('Training SVM...')
-        svm.fit(X_train, y_train)
-        print('Training RandomForest...')
-        rf.fit(X_train, y_train)
+    svm_acc = svm.score(X_val, y_val)
+    rf_acc = rf.score(X_val, y_val)
+    print(f'Fold {fold} validation accuracies - SVM: {svm_acc:.4f}, RF: {rf_acc:.4f}')
 
-        svm_acc = svm.score(X_val, y_val)
-        rf_acc = rf.score(X_val, y_val)
-        print(f'Fold {fold_num} validation accuracies - SVM: {svm_acc:.4f}, RF: {rf_acc:.4f}')
-
-        joblib.dump(svm, os.path.join(bench_dir, f'svm_fold_{fold_num}.joblib'))
-        joblib.dump(rf, os.path.join(bench_dir, f'rf_fold_{fold_num}.joblib'))
-        with open(os.path.join(bench_dir, f'meta_fold_{fold_num}.pkl'), 'wb') as mf:
-            pickle.dump({'svm_val_acc': float(svm_acc), 'rf_val_acc': float(rf_acc)}, mf)
+    joblib.dump(svm, os.path.join(bench_dir, f'svm_fold_{fold}.joblib'))
+    joblib.dump(rf, os.path.join(bench_dir, f'rf_fold_{fold}.joblib'))
+    with open(os.path.join(bench_dir, f'meta_fold_{fold}.pkl'), 'wb') as mf:
+        pickle.dump({'svm_val_acc': float(svm_acc), 'rf_val_acc': float(rf_acc)}, mf)
