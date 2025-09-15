@@ -4,8 +4,9 @@ import pandas as pd
 from sklearn.utils import compute_class_weight
 from stellargraph.layer import GraphConvolution, SortPooling
 from stellargraph.mapper import PaddedGraphGenerator
+import joblib
 
-from model.train import train_model_single, train_fold_single, train_model, generate_fold_indices
+from model.train import train_model_single, train_fold_single, train_model, generate_fold_indices, perform_benchmark
 from model.model import in_out_tensors
 from util import file_utils as fu, graph_utils as gu, visualization_utils as vu
 from datetime import datetime
@@ -304,10 +305,54 @@ def aggregate_results(model_dir):
     print(f"Analyzed {len(val_accuracies)} folds")
     print(f"Mean validation accuracy: {mean_acc:.4f} ± {std_acc:.4f}")
 
+    # If benchmarked sklearn models were saved, aggregate their reported validation accuracies
+    bench_summary = None
+    bench_dir = os.path.join(model_dir, 'benchmarks')
+    if os.path.isdir(bench_dir):
+        meta_files = [f for f in os.listdir(bench_dir) if f.startswith('meta_fold_') and f.endswith('.pkl')]
+        meta_files.sort()
+        if meta_files:
+            svm_accs = []
+            rf_accs = []
+            for mf in meta_files:
+                try:
+                    with open(os.path.join(bench_dir, mf), 'rb') as fh:
+                        data = pickle.load(fh)
+                except Exception:
+                    print(f"Could not read benchmark metadata file: {mf}, skipping")
+                    continue
+
+                if isinstance(data, dict):
+                    if 'svm_val_acc' in data:
+                        svm_accs.append(float(data['svm_val_acc']))
+                    if 'rf_val_acc' in data:
+                        rf_accs.append(float(data['rf_val_acc']))
+
+            if svm_accs or rf_accs:
+                svm_mean = np.mean(svm_accs) if svm_accs else None
+                svm_std = np.std(svm_accs) if svm_accs else None
+                rf_mean = np.mean(rf_accs) if rf_accs else None
+                rf_std = np.std(rf_accs) if rf_accs else None
+
+                print("Benchmark results:")
+                if svm_mean is not None:
+                    print(f" SVM  mean val acc: {svm_mean:.4f} ± {svm_std:.4f}")
+                if rf_mean is not None:
+                    print(f" RF   mean val acc: {rf_mean:.4f} ± {rf_std:.4f}")
+
+                bench_summary = {
+                    'svm_accs': svm_accs,
+                    'rf_accs': rf_accs,
+                    'svm_mean': svm_mean,
+                    'svm_std': svm_std,
+                    'rf_mean': rf_mean,
+                    'rf_std': rf_std,
+                }
+
     vu.visualize_training(histories)
     vu.visualize_validation(histories)
 
-    return mean_acc, std_acc
+    return mean_acc, std_acc, bench_summary
 
 
 def perform_model_inference(model, inference_graphs, inference_labels, suppress_printing=False, suppress_ranking=False,
@@ -385,6 +430,105 @@ def perform_model_inference(model, inference_graphs, inference_labels, suppress_
     return metrics
 
 
+def perform_benchmark_inference(model_dir, inference_graphs, inference_labels):
+    """Run inference for benchmarked sklearn models (SVM and RandomForest) if present.
+
+    For each fold where `svm_fold_{n}.joblib` and/or `rf_fold_{n}.joblib` exist in
+    `model_dir/benchmarks`, this function will:
+      - load the corresponding `model_{n}.h5` to build an embedding model (layer 'flatten_embedding')
+      - compute embeddings for `inference_graphs`
+      - load the sklearn classifiers and predict
+      - compute metrics using `util.visualization_utils.evaluate_model`
+      - save metrics and visualizations under a timestamped folder in `visualization_dir`
+
+    Returns a DataFrame of metrics (one row per model) or None if no benchmark models found.
+    """
+    bench_dir = os.path.join(model_dir, 'benchmarks')
+    if not os.path.isdir(bench_dir):
+        print(f"No benchmarks directory found at {bench_dir}")
+        return None
+
+    # find svm and rf model files
+    svm_files = sorted([f for f in os.listdir(bench_dir) if f.startswith('svm_fold_') and f.endswith('.joblib')])
+    rf_files = sorted([f for f in os.listdir(bench_dir) if f.startswith('rf_fold_') and f.endswith('.joblib')])
+
+    if not svm_files and not rf_files:
+        print("No benchmark model files found")
+        return None
+
+    # prepare inference data
+    inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
+    gen_all = inference_generator.flow(inference_graphs, targets=None, batch_size=8, shuffle=False)
+
+    fu.create_folder(visualization_dir)
+    run_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    run_dir = os.path.join(visualization_dir, f"bench_{run_timestamp}")
+    os.mkdir(run_dir)
+
+    metric_names = ["Accuracy", "Precision", "Recall", "False positive rate", "F1-score", "ROC AUC"]
+    all_metrics = []
+
+    # helper to compute embeddings given a full Keras model
+    def _compute_embeddings_from_model(full_model):
+        embed_layer = full_model.get_layer('flatten_embedding')
+        embedding_model = tf.keras.Model(inputs=full_model.input, outputs=embed_layer.output)
+        emb = embedding_model.predict(gen_all, verbose=0)
+        return emb
+
+    # process SVM files
+    for f in svm_files:
+        fold_str = f.replace('svm_fold_', '').replace('.joblib', '')
+        fold = fold_str
+        model_path = os.path.join(model_dir, f"model_{fold}.h5")
+        full_model = tf.keras.models.load_model(model_path, compile=False)
+        X_emb = _compute_embeddings_from_model(full_model)
+
+        svm = joblib.load(os.path.join(bench_dir, f))
+        probs = svm.predict_proba(X_emb)[:, 1]
+        binary_preds = np.round(probs).astype(int)
+        preds_for_eval = [[int(p)] for p in binary_preds]
+
+        # visualizations and metrics
+        subdir = os.path.join(run_dir, f'svm_fold_{fold}')
+        fu.create_folder(subdir)
+        vu.visualise_predictions(probs, inference_labels.to_list(), os.path.join(subdir, 'predictions'))
+        vu.visualize_roc(probs, inference_labels, subdir)
+        metrics = vu.evaluate_model(preds_for_eval, inference_labels)
+        with open(os.path.join(subdir, f'metrics_svm_fold_{fold}_{run_timestamp}.pkl'), 'wb') as mf:
+            pickle.dump(metrics, mf)
+        all_metrics.append(metrics)
+
+    # process RF files
+    for f in rf_files:
+        fold_str = f.replace('rf_fold_', '').replace('.joblib', '')
+        fold = fold_str
+        model_path = os.path.join(model_dir, f"model_{fold}.h5")
+        full_model = tf.keras.models.load_model(model_path, compile=False)
+        X_emb = _compute_embeddings_from_model(full_model)
+
+        rf = joblib.load(os.path.join(bench_dir, f))
+        probs = rf.predict_proba(X_emb)[:, 1]
+        binary_preds = np.round(probs).astype(int)
+        preds_for_eval = [[int(p)] for p in binary_preds]
+
+        subdir = os.path.join(run_dir, f'rf_fold_{fold}')
+        fu.create_folder(subdir)
+        vu.visualise_predictions(probs, inference_labels.to_list(), os.path.join(subdir, 'predictions'))
+        vu.visualize_roc(probs, inference_labels, subdir)
+        metrics = vu.evaluate_model(preds_for_eval, inference_labels)
+        with open(os.path.join(subdir, f'metrics_rf_fold_{fold}_{run_timestamp}.pkl'), 'wb') as mf:
+            pickle.dump(metrics, mf)
+        all_metrics.append(metrics)
+
+    # aggregate metrics and visualize
+    if all_metrics:
+        metrics_df = pd.DataFrame(all_metrics, columns=metric_names)
+        vu.visualize_multiple_models(metrics_df)
+        return metrics_df
+    else:
+        return None
+
+
 def aggregate_inference(model_dir, inference_graphs, inference_labels, quick=False):
     metric_names = ["Accuracy", "Precision", "Recall", "False positive rate", "F1-score", "ROC AUC"]
     # Verify directory exists
@@ -412,6 +556,79 @@ def aggregate_inference(model_dir, inference_graphs, inference_labels, quick=Fal
 
     metrics_df = pd.DataFrame(all_metrics, columns=metric_names)
     vu.visualize_multiple_models(metrics_df)
+    
+    return metrics_df
+
+def aggregate_benchmark_inference(model_dir, inference_graphs, inference_labels, original_metrics_df=None):
+    """Aggregate metrics for all SVM and RF benchmark models and visualize box plots per metric/model type.
+    The original model metrics should be provided via `original_metrics_df` (returned by `aggregate_inference`).
+    """
+    bench_dir = os.path.join(model_dir, 'benchmarks')
+    if not os.path.isdir(bench_dir):
+        print(f"No benchmarks directory found at {bench_dir}")
+        return None
+
+    svm_files = sorted([f for f in os.listdir(bench_dir) if f.startswith('svm_fold_') and f.endswith('.joblib')])
+    rf_files = sorted([f for f in os.listdir(bench_dir) if f.startswith('rf_fold_') and f.endswith('.joblib')])
+
+    metric_names = ["Accuracy", "Precision", "Recall", "False positive rate", "F1-score", "ROC AUC"]
+    metrics = {"SVM": [], "RF": []}
+
+    inference_generator = PaddedGraphGenerator(graphs=inference_graphs)
+    gen_all = inference_generator.flow(inference_graphs, targets=None, batch_size=8, shuffle=False)
+
+    def _compute_embeddings(full_model):
+        embed_layer = full_model.get_layer('flatten_embedding')
+        embedding_model = tf.keras.Model(inputs=full_model.input, outputs=embed_layer.output)
+        return embedding_model.predict(gen_all, verbose=0)
+
+    # Collect folds from SVM and RF files
+    folds = set()
+    for f in svm_files:
+        folds.add(f.replace('svm_fold_', '').replace('.joblib', ''))
+    for f in rf_files:
+        folds.add(f.replace('rf_fold_', '').replace('.joblib', ''))
+    folds = sorted(folds)
+
+    # SVM
+    for f in svm_files:
+        fold = f.replace('svm_fold_', '').replace('.joblib', '')
+        model_path = os.path.join(model_dir, f"model_{fold}.h5")
+        full_model = tf.keras.models.load_model(model_path, compile=False)
+        X_emb = _compute_embeddings(full_model)
+        svm = joblib.load(os.path.join(bench_dir, f))
+        probs = svm.predict_proba(X_emb)[:, 1]
+        binary_preds = np.round(probs).astype(int)
+        preds_for_eval = [[int(p)] for p in binary_preds]
+        metrics["SVM"].append(vu.evaluate_model(preds_for_eval, inference_labels))
+
+    # RF
+    for f in rf_files:
+        fold = f.replace('rf_fold_', '').replace('.joblib', '')
+        model_path = os.path.join(model_dir, f"model_{fold}.h5")
+        full_model = tf.keras.models.load_model(model_path, compile=False)
+        X_emb = _compute_embeddings(full_model)
+        rf = joblib.load(os.path.join(bench_dir, f))
+        probs = rf.predict_proba(X_emb)[:, 1]
+        binary_preds = np.round(probs).astype(int)
+        preds_for_eval = [[int(p)] for p in binary_preds]
+        metrics["RF"].append(vu.evaluate_model(preds_for_eval, inference_labels))
+
+    # Convert to DataFrame for plotting
+    import pandas as pd
+    dfs = []
+    for model_type in ["SVM", "RF"]:
+        df = pd.DataFrame(metrics[model_type], columns=metric_names)
+        df["Model"] = model_type
+        dfs.append(df)
+    metrics_df = pd.concat(dfs, ignore_index=True)
+
+    # original_metrics_df must be provided (returned from aggregate_inference)
+    if original_metrics_df is None:
+        raise ValueError("original_metrics_df must be provided (the DataFrame returned by aggregate_inference)")
+
+    vu.visualize_benchmark_metrics_boxplots(metrics_df, original_metrics_df)
+    return metrics_df
 
 
 if __name__ == "__main__":
@@ -427,6 +644,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--fold', type=int, default=None,
                         help='Fold number to process (0-indexed)')
     parser.add_argument('-a', '--aggregate', help='Aggregate k-fold results', action='store_true')
+    parser.add_argument('-b', '--benchmark', help='Run benchmark', action='store_true')
     args = parser.parse_args()
 
     if one_per_entry.lower() == "y":
@@ -462,6 +680,9 @@ if __name__ == "__main__":
         else:
             model = perform_model_training()
 
+    if args.benchmark and not args.inference:
+            perform_benchmark(model_dir=model_dir, split_dir=split_dir, graph_generator=graph_generator, graph_labels=graph_labels, fold=args.fold)
+
     if args.aggregate:
         aggregate_results(model_dir)
 
@@ -480,7 +701,12 @@ if __name__ == "__main__":
             labels = gu.load_graph_labels("inference_truth.txt")
 
         if args.fold == -1:
-            aggregate_inference(model_dir, graphs, labels, quick=True)
+            model_metrics = aggregate_inference(model_dir, graphs, labels, quick=True)
+            
+            if args.benchmark:
+                perform_benchmark_inference(model_dir, graphs, labels)
+                all_metrics = aggregate_benchmark_inference(model_dir, graphs, labels, original_metrics_df=model_metrics)
+                
         else:
             model = load_model(fold=args.fold)
             perform_model_inference(model, graphs, labels)

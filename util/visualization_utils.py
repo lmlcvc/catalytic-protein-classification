@@ -254,7 +254,7 @@ def visualize_validation(histories, figsize=(10, 6), dpi=300):
         plt.close()
 
 
-def evaluate_model(predictions, labels):
+def evaluate_model(predictions, labels, output_table=True):
     predictions = [prediction for sublist in predictions for prediction in sublist]
     accuracy = accuracy_score(labels, predictions)
     precision = precision_score(labels, predictions)
@@ -272,7 +272,8 @@ def evaluate_model(predictions, labels):
     metric_rows = [[name, value] for name, value in zip(metric_names, metric_values)]
 
     table = tabulate(metric_rows, headers=["Metric", "Value"], tablefmt="grid")
-    print(table)
+    if output_table: print(table)
+    
     return metric_values
 
 
@@ -355,6 +356,28 @@ def visualize_multiple_models(metrics, figsize=(10, 6), dpi=300):
     plt.tight_layout()
     plt.savefig(os.path.join(model_dir, 'bar_chart.png'))
     plt.close()
+
+
+def visualize_benchmark_metrics_boxplots(metrics_df, original_metrics_df, figsize=(10, 6), dpi=300):
+    """Create separate box plots for each metric and model type (SVM, RF, and original model)."""
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    if original_metrics_df is None:
+        raise ValueError("original_metrics_df must be provided and cannot be None.")
+    metrics = [c for c in metrics_df.columns if c not in ["Model"]]
+    plot_df = metrics_df.copy()
+    orig_df = original_metrics_df.copy()
+    orig_df["Model"] = "Original"
+    plot_df = pd.concat([plot_df, orig_df], ignore_index=True)
+    for metric in metrics:
+        plt.figure(figsize=figsize, dpi=dpi)
+        sns.boxplot(x="Model", y=metric, data=plot_df, palette="Set2")
+        plt.title(f"{metric} Distribution by Model Type")
+        plt.ylabel(metric)
+        plt.xlabel("Model Type")
+        plt.tight_layout()
+        plt.savefig(os.path.join(model_dir, f"benchmark_boxplot_{metric.lower().replace(' ', '_')}.png"))
+        plt.close()
 
 
 def save_feature_rankings(feature_rankings, filename):
